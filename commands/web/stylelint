@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Run Stylelint for CSS/SCSS validation with Prettier (Drupal standards)
+## Usage: stylelint [flags] [pattern]
+## Example: "ddev stylelint 'web/modules/custom/mymodule/**/*.css'"
+## ExecRaw: true
+## HostWorkingDir: true
+
+# Priority 1: project-level stylelint config at the project root.
+for config in .stylelintrc .stylelintrc.json .stylelintrc.yaml .stylelintrc.yml \
+              .stylelintrc.js .stylelintrc.cjs stylelint.config.js stylelint.config.cjs; do
+  if [ -f "${DDEV_APPROOT}/${config}" ]; then
+    exec stylelint "$@"
+  fi
+done
+
+# Priority 2: Drupal core's .stylelintrc.json — the same default the
+# GitLab CI template uses. Only usable when core/node_modules exists so
+# that the @drupal/stylelint-config extends can be resolved by stylelint.
+# (If not, our globally installed @drupal/stylelint-config is used instead
+# via the bundled fallback config below.)
+CORE_STYLELINTRC="${DDEV_APPROOT}/${DDEV_DOCROOT}/core/.stylelintrc.json"
+CORE_NODE_MODULES="${DDEV_APPROOT}/${DDEV_DOCROOT}/core/node_modules"
+if [ -f "${CORE_STYLELINTRC}" ] && [ -d "${CORE_NODE_MODULES}" ]; then
+  exec stylelint --config="${CORE_STYLELINTRC}" "$@"
+fi
+
+# Priority 3: bundled fallback config using globally installed @drupal/stylelint-config.
+exec stylelint --config=/mnt/ddev_config/module-developer/config/.stylelintrc.json "$@"

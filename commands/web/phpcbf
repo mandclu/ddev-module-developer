@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Run PHP Code Beautifier and Fixer (auto-fix phpcs violations)
+## Usage: phpcbf [flags] [path]
+## Example: "ddev phpcbf web/modules/custom/mymodule"
+## ExecRaw: true
+## HostWorkingDir: true
+## MutagenSync: true
+
+# Shares config detection logic with the phpcs command.
+for config in phpcs.xml phpcs.xml.dist .phpcs.xml; do
+  if [ -f "${DDEV_APPROOT}/${config}" ]; then
+    exec phpcbf "$@"
+  fi
+done
+
+exec phpcbf --standard=/mnt/ddev_config/module-developer/config/phpcs.xml "$@"

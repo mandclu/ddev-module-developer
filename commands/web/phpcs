@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Run PHP_CodeSniffer with Drupal coding standards
+## Usage: phpcs [flags] [path]
+## Example: "ddev phpcs web/modules/custom/mymodule"
+## ExecRaw: true
+## HostWorkingDir: true
+## MutagenSync: true
+
+# Look for a project-level phpcs config at the project root.
+# If none is found, fall back to the bundled Drupal default config.
+for config in phpcs.xml phpcs.xml.dist .phpcs.xml; do
+  if [ -f "${DDEV_APPROOT}/${config}" ]; then
+    exec phpcs "$@"
+  fi
+done
+
+exec phpcs --standard=/mnt/ddev_config/module-developer/config/phpcs.xml "$@"

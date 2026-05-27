@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Run ESLint for JS and YAML validation with Prettier (Drupal standards)
+## Usage: eslint [flags] [path]
+## Example: "ddev eslint web/modules/custom/mymodule/js"
+## ExecRaw: true
+## HostWorkingDir: true
+
+# Priority 1: project-level ESLint config at the project root.
+for config in .eslintrc .eslintrc.json .eslintrc.yaml .eslintrc.yml \
+              .eslintrc.js .eslintrc.cjs eslint.config.js eslint.config.cjs; do
+  if [ -f "${DDEV_APPROOT}/${config}" ]; then
+    exec eslint "$@"
+  fi
+done
+
+# Priority 2: Drupal core's .eslintrc.passing.json — the same default the
+# GitLab CI template uses. Only available when Drupal is installed and
+# core/node_modules exists (i.e. yarn/npm install has been run in core).
+CORE_ESLINTRC="${DDEV_APPROOT}/${DDEV_DOCROOT}/core/.eslintrc.passing.json"
+CORE_NODE_MODULES="${DDEV_APPROOT}/${DDEV_DOCROOT}/core/node_modules"
+if [ -f "${CORE_ESLINTRC}" ] && [ -d "${CORE_NODE_MODULES}" ]; then
+  exec eslint --no-eslintrc -c "${CORE_ESLINTRC}" "$@"
+fi
+
+# Priority 3: bundled fallback config (globally installed plugins).
+exec eslint --no-eslintrc -c /mnt/ddev_config/module-developer/config/.eslintrc.json "$@"

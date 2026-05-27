@@ -1,0 +1,46 @@
+name: module-developer
+ddev_version_constraint: ">= v1.23.0"
+
+project_files:
+  - docker-compose.module-developer.yaml
+  - commands/web/phpcs
+  - commands/web/phpcbf
+  - commands/web/phpstan
+  - commands/web/phpmd
+  - commands/web/rector
+  - commands/web/stylelint
+  - commands/web/eslint
+  - commands/web/cspell
+  - module-developer/config/phpcs.xml
+  - module-developer/config/phpstan.neon
+  - module-developer/config/phpmd-ruleset.xml
+  - module-developer/config/.stylelintrc.json
+  - module-developer/config/.eslintrc.json
+
+post_install_actions:
+  - |
+    #ddev-description: Report successful installation and next steps
+    echo ""
+    echo "ddev-module-developer installed."
+    echo ""
+    echo "Run 'ddev restart' to build the updated web container."
+    echo "The following commands will be available after restart:"
+    echo ""
+    echo "  ddev phpcs      PHP_CodeSniffer (Drupal/DrupalPractice standards)"
+    echo "  ddev phpcbf     PHP Code Beautifier and Fixer (auto-fix phpcs violations)"
+    echo "  ddev phpstan    PHPStan static analysis (with Drupal extension)"
+    echo "  ddev phpmd      PHP Mess Detector"
+    echo "  ddev rector     Drupal Rector (automated deprecation fixes)"
+    echo "  ddev stylelint  Stylelint (CSS/SCSS, with Prettier)"
+    echo "  ddev eslint     ESLint (JavaScript + YAML, with Prettier)"
+  echo "  ddev cspell     CSpell (spell-checking)"
+    echo ""
+    echo "Default configs are in .ddev/module-developer/config/."
+    echo "Place phpcs.xml, phpstan.neon, .stylelintrc.json, etc. in your project"
+    echo "root to override the defaults for any tool."
+    echo ""
+
+removal_actions:
+  - |
+    #ddev-description: Remind user to restart after removal
+    echo "ddev-module-developer removed. Run 'ddev restart' to rebuild the container."

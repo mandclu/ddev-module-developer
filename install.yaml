@@ -19,6 +19,17 @@ project_files:
 
 post_install_actions:
   - |
+    #ddev-description: Set execute permissions on command scripts
+    chmod +x \
+      .ddev/commands/web/phpcs \
+      .ddev/commands/web/phpcbf \
+      .ddev/commands/web/phpstan \
+      .ddev/commands/web/phpmd \
+      .ddev/commands/web/rector \
+      .ddev/commands/web/stylelint \
+      .ddev/commands/web/eslint \
+      .ddev/commands/web/cspell
+  - |
     #ddev-description: Report successful installation and next steps
     echo ""
     echo "ddev-module-developer installed."

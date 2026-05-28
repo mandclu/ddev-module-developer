@@ -5,8 +5,11 @@
 services:
   web:
     build:
+      args:
+        BASE_IMAGE: $DDEV_WEBIMAGE
       dockerfile_inline: |
-        FROM ddev-webserver AS base
+        ARG BASE_IMAGE
+        FROM $BASE_IMAGE AS base
         USER root
 
         # ---------------------------------------------------------------

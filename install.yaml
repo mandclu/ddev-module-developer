@@ -2,7 +2,7 @@ name: module-developer
 ddev_version_constraint: ">= v1.23.0"
 
 project_files:
-  - docker-compose.module-developer.yaml
+  - web-build/Dockerfile
   - commands/web/phpcs
   - commands/web/phpcbf
   - commands/web/phpstan

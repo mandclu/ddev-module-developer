@@ -33,7 +33,7 @@ post_install_actions:
     echo "  ddev rector     Drupal Rector (automated deprecation fixes)"
     echo "  ddev stylelint  Stylelint (CSS/SCSS, with Prettier)"
     echo "  ddev eslint     ESLint (JavaScript + YAML, with Prettier)"
-  echo "  ddev cspell     CSpell (spell-checking)"
+    echo "  ddev cspell     CSpell (spell-checking)"
     echo ""
     echo "Default configs are in .ddev/module-developer/config/."
     echo "Place phpcs.xml, phpstan.neon, .stylelintrc.json, etc. in your project"

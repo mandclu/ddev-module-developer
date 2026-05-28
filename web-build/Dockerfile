@@ -7,7 +7,8 @@ USER root
 # Tools land in /usr/local/composer/vendor/bin/ and are symlinked
 # into /usr/local/bin/ for PATH-transparent access.
 ENV COMPOSER_HOME=/usr/local/composer
-RUN composer global require --no-interaction \
+RUN composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true \
+    && composer global require --no-interaction \
       squizlabs/php_codesniffer \
       drupal/coder \
       phpstan/phpstan \
@@ -35,11 +36,10 @@ RUN composer global require --no-interaction \
 #   the template runs Prettier checks inside the eslint job.
 # eslint-plugin-yml — the template lints .yml files via ESLint.
 # cspell@^8.6.0 — spell-checking job in the template pipeline.
-# @drupal/stylelint-config — needed to resolve extends when using
-#   Drupal core's .stylelintrc.json as a config source.
+# stylelint-config-standard — base config used by Drupal core and contrib.
 RUN npm install -g \
       stylelint \
-      @drupal/stylelint-config \
+      stylelint-config-standard \
       eslint@^8.57.0 \
       eslint-config-prettier \
       eslint-plugin-prettier \

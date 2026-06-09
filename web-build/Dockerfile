@@ -7,23 +7,28 @@ USER root
 # Tools land in /usr/local/composer/vendor/bin/ and are symlinked
 # into /usr/local/bin/ for PATH-transparent access.
 ENV COMPOSER_HOME=/usr/local/composer
+# phpcompatibility/php-compatibility only supports phpcs ^3.x, not ^4.x.
+# Remove it from the global install so phpcs and drupal/coder can upgrade to
+# 4.x/9.x to match Drupal 11 CI. It is re-installed alongside its own phpcs 3.x
+# in /usr/local/phpcompat for use by the phpcompat command.
 RUN composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true \
+    && composer global remove --no-interaction phpcompatibility/php-compatibility \
     && composer global require --no-interaction \
-      squizlabs/php_codesniffer \
-      drupal/coder \
+      squizlabs/php_codesniffer:^4.0 \
+      drupal/coder:^9.0 \
       phpstan/phpstan \
       mglaman/phpstan-drupal \
       phpmd/phpmd \
       palantirnet/drupal-rector \
-      phpcompatibility/php-compatibility \
-    && /usr/local/composer/vendor/bin/phpcs \
-         --config-set installed_paths \
-         /usr/local/composer/vendor/drupal/coder/coder_sniffer,/usr/local/composer/vendor/phpcompatibility/php-compatibility \
     && ln -sf /usr/local/composer/vendor/bin/phpcs   /usr/local/bin/phpcs \
     && ln -sf /usr/local/composer/vendor/bin/phpcbf  /usr/local/bin/phpcbf \
     && ln -sf /usr/local/composer/vendor/bin/phpstan /usr/local/bin/phpstan \
     && ln -sf /usr/local/composer/vendor/bin/phpmd   /usr/local/bin/phpmd \
-    && ln -sf /usr/local/composer/vendor/bin/rector  /usr/local/bin/rector
+    && ln -sf /usr/local/composer/vendor/bin/rector  /usr/local/bin/rector \
+    && mkdir -p /usr/local/phpcompat \
+    && composer -d /usr/local/phpcompat init --no-interaction --name=internal/phpcompat \
+    && composer -d /usr/local/phpcompat config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true \
+    && composer -d /usr/local/phpcompat require --no-interaction phpcompatibility/php-compatibility
 
 # Node.js code quality tools — installed globally via npm.
 #

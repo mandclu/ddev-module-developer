@@ -16,4 +16,4 @@ for config in phpcs.xml phpcs.xml.dist .phpcs.xml; do
   fi
 done
 
-exec phpcs --standard=/mnt/ddev_config/module-developer/config/phpcs.xml "$@"
+exec phpcs --standard=/mnt/ddev_config/module-developer/config/phpcs.xml -s "$@"

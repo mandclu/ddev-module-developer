@@ -15,4 +15,4 @@ for config in phpcs.xml phpcs.xml.dist .phpcs.xml; do
   fi
 done
 
-exec phpcbf --standard=/mnt/ddev_config/module-developer/config/phpcs.xml "$@"
+exec phpcbf --standard=/mnt/ddev_config/module-developer/config/phpcs.xml -s "$@"

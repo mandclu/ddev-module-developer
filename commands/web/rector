@@ -44,7 +44,14 @@ echo "Using auto-generated config targeting web/modules/custom."
 echo "Create a rector.php in your project root to customise paths and rule sets."
 echo ""
 
-rector --config="${TMPCONFIG}" "$@"
+if [ $# -eq 0 ]; then
+  echo "No subcommand given; defaulting to 'process --dry-run'."
+  echo "Run 'ddev rector process' to apply changes."
+  echo ""
+  rector --config="${TMPCONFIG}" process --dry-run
+else
+  rector --config="${TMPCONFIG}" "$@"
+fi
 EXIT_CODE=$?
 rm -f "${TMPCONFIG}"
 exit ${EXIT_CODE}

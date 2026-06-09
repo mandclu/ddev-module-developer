@@ -15,9 +15,10 @@ RUN composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-in
       mglaman/phpstan-drupal \
       phpmd/phpmd \
       palantirnet/drupal-rector \
+      phpcompatibility/php-compatibility \
     && /usr/local/composer/vendor/bin/phpcs \
          --config-set installed_paths \
-         /usr/local/composer/vendor/drupal/coder/coder_sniffer \
+         /usr/local/composer/vendor/drupal/coder/coder_sniffer,/usr/local/composer/vendor/phpcompatibility/php-compatibility \
     && ln -sf /usr/local/composer/vendor/bin/phpcs   /usr/local/bin/phpcs \
     && ln -sf /usr/local/composer/vendor/bin/phpcbf  /usr/local/bin/phpcbf \
     && ln -sf /usr/local/composer/vendor/bin/phpstan /usr/local/bin/phpstan \

@@ -7,107 +7,66 @@
 ## ExecRaw: true
 ## HostWorkingDir: true
 
-# If the project has its own .cspell.json, use it directly (same as the
-# GitLab CI template behaviour).
-if [ -f "${DDEV_APPROOT}/.cspell.json" ]; then
-  cd "${DDEV_APPROOT}"
-  exec cspell --show-suggestions --show-context --dot "${@:-./**}"
-fi
-
-# No project config found. Build a temporary .cspell.json that mirrors
-# what the GitLab CI template's prepare-cspell.php produces:
-#  - Drupal core's own word lists (when available)
-#  - Module machine names discovered from .info.yml files
-#  - The standard set of flagged words (inclusive language policy)
-#  - Vendor/web root excluded
-
 WEB_ROOT="${DDEV_DOCROOT:-web}"
-DRUPAL_DICT="${DDEV_APPROOT}/${WEB_ROOT}/core/misc/cspell/drupal-dictionary.txt"
-GENERIC_DICT="${DDEV_APPROOT}/${WEB_ROOT}/core/misc/cspell/dictionary.txt"
 
-# Discover module names from .info.yml files (skip vendor/web/node_modules).
-MODULE_WORDS=()
-while IFS= read -r -d '' infofile; do
-  basename "${infofile}" | sed 's/\.info\.yml$//' | tr '_' '\n' | while read -r part; do
-    [ -n "${part}" ] && MODULE_WORDS+=("${part}")
+# Prefer web/core/node_modules/.bin/cspell (the binary CI uses), then
+# project-level node_modules, then the globally installed binary.
+CSPELL="${DDEV_APPROOT}/${WEB_ROOT}/core/node_modules/.bin/cspell"
+if [ ! -x "${CSPELL}" ]; then
+  CSPELL="${DDEV_APPROOT}/node_modules/.bin/cspell"
+  if [ ! -x "${CSPELL}" ]; then
+    CSPELL="cspell"
+  fi
+fi
+
+# Download prepare-cspell.php from the GitLab Templates repository, exactly
+# as the CI job does.
+PREPARE_SCRIPT=$(mktemp /tmp/prepare-cspell-XXXXXX.php)
+curl -fsSL -o "${PREPARE_SCRIPT}" \
+  https://git.drupalcode.org/project/gitlab_templates/-/raw/default-ref/scripts/prepare-cspell.php
+
+# If the project has its own .cspell.json, back it up before prepare-cspell.php
+# modifies it in place. Otherwise download the canonical default from the
+# GitLab Templates repository (identical to the CI job).
+HAS_CONFIG=0
+if [ -f ".cspell.json" ]; then
+  HAS_CONFIG=1
+  cp ".cspell.json" ".cspell.json.bak"
+else
+  curl -fsSL -o ".cspell.json" \
+    https://git.drupalcode.org/project/gitlab_templates/-/raw/default-ref/assets/.cspell.json
+fi
+
+# Parse _CSPELL_* variables from .gitlab-ci.yml if present, replicating what
+# CI sets automatically from the pipeline variables block.
+if [ -f ".gitlab-ci.yml" ]; then
+  for var in _CSPELL_WORDS _CSPELL_FLAGWORDS _CSPELL_IGNORE_PATHS _CSPELL_IGNORE_STANDARD_FILES _CSPELL_DICTIONARY; do
+    value=$(grep -m1 "^\s*${var}:" ".gitlab-ci.yml" | sed -E "s/^\s*${var}:\s*//" | tr -d "'\"")
+    if [ -n "${value}" ]; then
+      export "${var}=${value}"
+    fi
   done
-done < <(find "${DDEV_APPROOT}" \
-  -not \( -path "${DDEV_APPROOT}/vendor/*" -prune \) \
-  -not \( -path "${DDEV_APPROOT}/${WEB_ROOT}/*" -prune \) \
-  -not \( -path "${DDEV_APPROOT}/node_modules/*" -prune \) \
-  -name "*.info.yml" -print0 2>/dev/null)
-
-# Re-run the find to collect parts (bash array trick for subshell).
-PARTS_STR=""
-while IFS= read -r -d '' infofile; do
-  name=$(basename "${infofile}" | sed 's/\.info\.yml$//')
-  parts=$(echo "${name}" | tr '_' ' ')
-  PARTS_STR="${PARTS_STR} ${parts}"
-done < <(find "${DDEV_APPROOT}" \
-  -not \( -path "${DDEV_APPROOT}/vendor/*" -prune \) \
-  -not \( -path "${DDEV_APPROOT}/${WEB_ROOT}/*" -prune \) \
-  -not \( -path "${DDEV_APPROOT}/node_modules/*" -prune \) \
-  -name "*.info.yml" -print0 2>/dev/null)
-
-# Build words array as JSON.
-WORDS_JSON="[\"lando\",\"ddev\",\"endapply\",\"nightwatchjs\",\"testgroup\",\"testgroups\",\"backlinks\",\"mdhash\",\"uploaders\",\"vocabs\",\"curlopt\",\"returntransfer\",\"curle\",\"customrequest\",\"failonerror\",\"postfields\",\"followlocation\",\"flagwords\",\"mkdocs\",\"autorun\"]"
-for word in ${PARTS_STR}; do
-  [ -n "${word}" ] && WORDS_JSON=$(echo "${WORDS_JSON}" | sed "s/]$/,\"${word}\"]/" 2>/dev/null || echo "${WORDS_JSON}")
-done
-
-# Build dictionaryDefinitions array depending on what core files exist.
-DICT_DEFS="[]"
-DICT_NAMES="[]"
-if [ -f "${DRUPAL_DICT}" ]; then
-  DICT_DEFS="[{\"name\":\"drupal\",\"path\":\"${DRUPAL_DICT}\"}]"
-  DICT_NAMES="[\"drupal\"]"
-fi
-if [ -f "${GENERIC_DICT}" ]; then
-  DICT_DEFS=$(echo "${DICT_DEFS}" | sed "s/]$/,{\"name\":\"dictionary\",\"path\":\"${GENERIC_DICT}\"}]/")
-  DICT_NAMES=$(echo "${DICT_NAMES}" | sed 's/]$/,"dictionary"]/')
 fi
 
-TMPCONFIG=$(mktemp /tmp/cspell-XXXXXX.json)
-cat > "${TMPCONFIG}" <<EOF
-{
-  "version": "0.2",
-  "language": "en",
-  "words": ${WORDS_JSON},
-  "flagWords": [
-    "blacklist", "blacklists", "blacklisted",
-    "e-mail",
-    "grey",
-    "queuing",
-    "whitelist", "whitelists", "whitelisted"
-  ],
-  "dictionaries": [
-    "drupal", "dictionary",
-    "companies", "fonts", "html", "php", "softwareTerms", "misc",
-    "typescript", "node", "css", "bash", "filetypes", "npm",
-    "lorem-ipsum", "sql", "fullstack"
-  ],
-  "dictionaryDefinitions": ${DICT_DEFS},
-  "ignorePaths": [
-    "${WEB_ROOT}",
-    "vendor",
-    "node_modules",
-    ".git",
-    "recipes",
-    "*.patch",
-    "*.svg",
-    "*.lock",
-    "**/.*.json",
-    "package.json",
-    "phpstan*",
-    ".*ignore",
-    "_cspell_unrecognized_words.txt",
-    "_cspell_updated_project_words.txt"
-  ]
-}
-EOF
+# Run prepare-cspell.php, which modifies .cspell.json in place.
+# Set the CI environment variables the script depends on.
+export _WEB_ROOT="${WEB_ROOT}"
+export CI_PROJECT_NAME
+CI_PROJECT_NAME=$(basename "$(pwd)")
+export CI_PROJECT_DIR
+CI_PROJECT_DIR=$(pwd)
+php "${PREPARE_SCRIPT}"
+rm -f "${PREPARE_SCRIPT}"
 
-cd "${DDEV_APPROOT}"
-cspell --config="${TMPCONFIG}" --show-suggestions --show-context --dot "${@:-./**}"
+# Invoke cspell with the same flags and path as the CI job.
+"${CSPELL}" -c .cspell.json --show-suggestions --show-context --no-progress "${@:-.}"
 EXIT_CODE=$?
-rm -f "${TMPCONFIG}"
+
+# Restore or remove .cspell.json.
+if [ "${HAS_CONFIG}" -eq 1 ]; then
+  mv ".cspell.json.bak" ".cspell.json"
+else
+  rm -f ".cspell.json"
+fi
+
 exit ${EXIT_CODE}

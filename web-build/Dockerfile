@@ -40,7 +40,9 @@ RUN composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-in
 #   .eslintrc.* files.
 # eslint-plugin-prettier / eslint-config-prettier / prettier —
 #   the template runs Prettier checks inside the eslint job.
-# eslint-plugin-yml — the template lints .yml files via ESLint.
+# eslint-plugin-yml@^1.19.1 — v2+ dropped ESLint 8 legacy config
+#   support (plugin:yml/standard becomes a flat config object with
+#   circular references that ESLint 8's schema validator rejects).
 # cspell@^8.6.0 — spell-checking job in the template pipeline.
 # stylelint-config-standard — base config used by Drupal core and contrib.
 RUN npm install -g \
@@ -49,7 +51,7 @@ RUN npm install -g \
       eslint@^8.57.0 \
       eslint-config-prettier \
       eslint-plugin-prettier \
-      eslint-plugin-yml \
+      eslint-plugin-yml@^1.19.1 \
       prettier \
       @babel/eslint-parser \
       @babel/core \

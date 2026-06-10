@@ -48,9 +48,14 @@ if [ -f ".gitlab-ci.yml" ]; then
   done
 fi
 
+# Mirror the CI default: _CSPELL_DICTIONARY defaults to .cspell-project-words.txt.
+# prepare-cspell.php only registers the dictionary when this variable is set,
+# so without this default the file is silently ignored when running locally.
+export _CSPELL_DICTIONARY="${_CSPELL_DICTIONARY:-.cspell-project-words.txt}"
+
 # Run prepare-cspell.php, which modifies .cspell.json in place.
 # Set the CI environment variables the script depends on.
-export _WEB_ROOT="${WEB_ROOT}"
+export _WEB_ROOT="${DDEV_APPROOT}/${WEB_ROOT}"
 export CI_PROJECT_NAME
 CI_PROJECT_NAME=$(basename "$(pwd)")
 export CI_PROJECT_DIR

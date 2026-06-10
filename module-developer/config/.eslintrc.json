@@ -17,7 +17,7 @@
     "prettier"
   ],
   "rules": {
-    "prettier/prettier": "warn",
+    "prettier/prettier": "error",
     "no-unused-vars": "warn",
     "no-console": "warn",
     "eqeqeq": ["warn", "always"]
@@ -26,7 +26,7 @@
     {
       "files": ["*.yml", "*.yaml"],
       "plugins": ["yml"],
-      "extends": ["plugin:yml/standard"],
+      "extends": ["plugin:yml/recommended"],
       "rules": {
         "yml/quotes": ["warn", {"prefer": "single"}]
       }

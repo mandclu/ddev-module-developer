@@ -9,6 +9,19 @@
 
 WEB_ROOT="${DDEV_DOCROOT:-web}"
 
+# Default to the current directory when no path argument is given.
+_has_path=0
+for _arg in "$@"; do
+  case "${_arg}" in
+    -*) ;;
+    *) _has_path=1; break ;;
+  esac
+done
+if [ "${_has_path}" -eq 0 ]; then
+  set -- "$@" .
+fi
+unset _has_path _arg
+
 # Prefer web/core/node_modules/.bin/eslint (the binary CI uses), then
 # project-level node_modules, then the globally installed binary.
 ESLINT="${DDEV_APPROOT}/${WEB_ROOT}/core/node_modules/.bin/eslint"
@@ -98,6 +111,19 @@ fi
 ESLINT_TMPDIR="$(mktemp -d /tmp/eslint-XXXXXX)"
 cp "${DDEV_APPROOT}/.ddev/module-developer/config/.eslintrc.json" "${ESLINT_TMPDIR}/.eslintrc.json"
 ln -s "${_GLOBAL_MODULES}" "${ESLINT_TMPDIR}/node_modules"
+# Mirror CI: configure Prettier in the current (module) directory if not present.
+if [ ! -e ".prettierrc.json" ]; then
+  if [ -f "${CORE_DIR}/.prettierrc.json" ]; then
+    ln -s "${CORE_DIR}/.prettierrc.json" ".prettierrc.json"
+  else
+    ln -s "${DDEV_APPROOT}/.ddev/module-developer/config/.prettierrc.json" ".prettierrc.json"
+  fi
+  CREATED_PRETTIERRC=".prettierrc.json"
+fi
+if [ ! -e ".prettierignore" ]; then
+  printf '*.yml\n' > ".prettierignore"
+  CREATED_PRETTIERIGNORE=".prettierignore"
+fi
 # shellcheck disable=SC2086
 "${ESLINT}" --no-error-on-unmatched-pattern --ignore-pattern="*.es6.js" \
   --no-eslintrc -c "${ESLINT_TMPDIR}/.eslintrc.json" \

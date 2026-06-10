@@ -10,6 +10,7 @@ project_files:
   - commands/web/rector
   - commands/web/stylelint
   - commands/web/eslint
+  - commands/web/phpunit
   - commands/web/cspell
   - module-developer/config/phpcs.xml
   - module-developer/config/phpstan.neon
@@ -33,6 +34,7 @@ post_install_actions:
     echo "  ddev rector     Drupal Rector (automated deprecation fixes)"
     echo "  ddev stylelint  Stylelint (CSS/SCSS, with Prettier)"
     echo "  ddev eslint     ESLint (JavaScript + YAML, with Prettier)"
+    echo "  ddev phpunit    PHPUnit (with Drupal bootstrap)"
     echo "  ddev cspell     CSpell (spell-checking)"
     echo ""
     echo "Default configs are in .ddev/module-developer/config/."

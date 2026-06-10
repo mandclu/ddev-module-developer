@@ -54,6 +54,7 @@ RUN composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-in
 RUN npm install -g \
       stylelint \
       stylelint-config-standard \
+      stylelint-prettier \
       eslint@^8.57.0 \
       eslint-config-prettier \
       eslint-plugin-prettier \

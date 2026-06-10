@@ -49,12 +49,22 @@ if [ "${FOUND_LOCAL_CONFIG}" = "false" ]; then
   fi
 fi
 
-# Default to the CI file glob when no arguments are given. Quoted so stylelint's
-# own glob library handles ** recursively (bash without globstar would only expand
+# Separate flags (--*) from file patterns so that flag-only invocations like
+# "ddev stylelint --fix" still get the default glob. Quoted so stylelint's own
+# glob library handles ** recursively (bash without globstar would only expand
 # one level deep).
-if [ "$#" -eq 0 ]; then
-  set -- './**/*.css'
+FLAGS=()
+PATTERNS=()
+for arg in "$@"; do
+  case "${arg}" in
+    --*) FLAGS+=("${arg}") ;;
+    *) PATTERNS+=("${arg}") ;;
+  esac
+done
+
+if [ "${#PATTERNS[@]}" -eq 0 ]; then
+  PATTERNS=('./**/*.css')
 fi
 
 # shellcheck disable=SC2086
-exec "${STYLELINT}" --allow-empty-input --ignore-path ./.stylelintignore ${STYLELINT_CONFIG} "$@" --formatter verbose --color ${_STYLELINT_EXTRA}
+exec "${STYLELINT}" --allow-empty-input --ignore-path ./.stylelintignore ${STYLELINT_CONFIG} "${FLAGS[@]}" "${PATTERNS[@]}" --formatter verbose --color ${_STYLELINT_EXTRA}

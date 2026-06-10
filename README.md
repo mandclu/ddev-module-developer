@@ -143,6 +143,15 @@ Most tools support an ignore file in the project root:
 
 ## Automatically fix coding standard violations
 
+`ddev stylelint --fix` and `ddev eslint --fix` will auto-fix Prettier formatting issues in CSS and JavaScript files respectively:
+
+```sh
+ddev stylelint --fix
+ddev stylelint --fix 'web/modules/custom/mymodule/**/*.css'
+ddev eslint --fix
+ddev eslint --fix web/modules/custom/mymodule/js
+```
+
 Set up a pre-commit hook that runs `phpcbf` before every commit:
 
 1. Create `.git/hooks/pre-commit` if it does not already exist.

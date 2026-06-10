@@ -60,4 +60,11 @@ export SIMPLETEST_BASE_URL="${SIMPLETEST_BASE_URL:-${DDEV_PRIMARY_URL}}"
 export SIMPLETEST_DB="${SIMPLETEST_DB:-mysql://db:db@db/db}"
 export BROWSERTEST_OUTPUT_DIRECTORY="${BROWSERTEST_OUTPUT_DIRECTORY:-${DDEV_APPROOT}/${DDEV_DOCROOT}/sites/simpletest/browser_output}"
 
-exec "${PHPUNIT}" --bootstrap="${BOOTSTRAP}" "$@"
+# Default to showing all issue details (deprecations, notices, warnings, etc.).
+# Set PHPUNIT_DISPLAY_ALL_ISSUES=0 in .ddev/config.yaml web_environment to suppress.
+DISPLAY_FLAGS="--display-all-issues"
+if [ "${PHPUNIT_DISPLAY_ALL_ISSUES:-1}" = "0" ]; then
+  DISPLAY_FLAGS=""
+fi
+
+exec "${PHPUNIT}" --bootstrap="${BOOTSTRAP}" ${DISPLAY_FLAGS} "$@"

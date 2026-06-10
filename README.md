@@ -83,6 +83,13 @@ If your project has a `phpunit.xml` or `phpunit.xml.dist` in the project root, `
 
 Override any of these by setting them in `.ddev/config.yaml` under `web_environment` before running the command.
 
+By default, `ddev phpunit` passes `--display-all-issues` to PHPUnit so that deprecations, notices, and warnings are shown inline rather than summarised. To suppress this output, set `PHPUNIT_DISPLAY_ALL_ISSUES=0` in `.ddev/config.yaml`:
+
+```yaml
+web_environment:
+  - PHPUNIT_DISPLAY_ALL_ISSUES=0
+```
+
 
 ## Configuration
 

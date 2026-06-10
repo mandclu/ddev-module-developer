@@ -7,39 +7,67 @@
 ## ExecRaw: true
 ## HostWorkingDir: true
 
+# Prefer the project-local phpstan binary (same as CI uses via $COMPOSER_BIN_DIR).
+PHPSTAN="${DDEV_APPROOT}/vendor/bin/phpstan"
+if [ ! -x "${PHPSTAN}" ]; then
+  PHPSTAN="phpstan"
+fi
+
+# phpstan requires an explicit subcommand (analyse, clear-result-cache, etc.).
+# When none is given, default to 'analyse .' so that `ddev phpstan` and
+# `ddev phpstan .` both work without the user spelling out the subcommand.
+if [ "$#" -eq 0 ]; then
+  set -- analyse .
+else
+  case "$1" in
+    analyse|analyze|clear-result-cache|dump-deps|fix|worker|diagnose|help|list|--version|-V|--help|-h)
+      ;;  # recognised subcommand or global flag — pass through unchanged
+    *)
+      set -- analyse "$@"
+      ;;
+  esac
+fi
+
 # If the project provides its own phpstan config, use it as-is.
-# The GitLab CI Docker image pre-installs mglaman/phpstan-drupal, so the
-# template's phpstan.neon does not reference it. If your project-level
-# phpstan.neon also omits it, add the extension include yourself or rely
-# on this command's auto-injection below.
 for config in phpstan.neon phpstan.neon.dist phpstan.dist.neon; do
   if [ -f "${DDEV_APPROOT}/${config}" ]; then
-    exec phpstan "$@"
+    exec "${PHPSTAN}" "$@"
   fi
 done
 
-# No project config found. Build a temporary neon that:
-#  1. Includes the mglaman/phpstan-drupal extension (pre-installed in the
-#     DDEV web container; in CI this comes from the Docker image instead).
-#  2. Includes the bundled default config (level, fileExtensions, ignores).
-#  3. Sets drupal_root to the actual DDEV docroot path.
-DRUPAL_ROOT="${DDEV_APPROOT}/${DDEV_DOCROOT}"
+# No project config found. Build a temporary neon that includes
+# mglaman/phpstan-drupal (pre-installed globally; in CI it comes from the
+# Docker image).
+#
+# mglaman's drupal-autoloader.php calls InstalledVersions::getInstallPath()
+# to locate drupal/core, but the global phpstan phar only knows about its own
+# bundled packages. Drupal/core lives in the project's vendor directory. We fix
+# this by loading the project's vendor/autoload.php as a bootstrap file BEFORE
+# drupal-autoloader.php runs — phpstan loads bootstrapFiles from earlier
+# includes() entries before later ones, so we inject a one-liner neon as the
+# very first include.
 MGLAMAN_EXT="/usr/local/composer/vendor/mglaman/phpstan-drupal/extension.neon"
 MGLAMAN_RULES="/usr/local/composer/vendor/mglaman/phpstan-drupal/rules.neon"
+
+BOOTSTRAP_NEON=$(mktemp /tmp/phpstan-bootstrap-XXXXXX.neon)
+cat > "${BOOTSTRAP_NEON}" <<EOF
+parameters:
+  bootstrapFiles:
+    - ${DDEV_APPROOT}/vendor/autoload.php
+EOF
+
+BUNDLED_CONFIG="/mnt/ddev_config/module-developer/config/phpstan.neon"
 
 TMPCONFIG=$(mktemp /tmp/phpstan-XXXXXX.neon)
 cat > "${TMPCONFIG}" <<EOF
 includes:
+  - ${BOOTSTRAP_NEON}
   - ${MGLAMAN_EXT}
   - ${MGLAMAN_RULES}
-  - /mnt/ddev_config/module-developer/config/phpstan.neon
-
-parameters:
-  drupal:
-    drupal_root: ${DRUPAL_ROOT}
+  - ${BUNDLED_CONFIG}
 EOF
 
-phpstan --configuration="${TMPCONFIG}" "$@"
+"${PHPSTAN}" --configuration="${TMPCONFIG}" "$@"
 EXIT_CODE=$?
-rm -f "${TMPCONFIG}"
+rm -f "${TMPCONFIG}" "${BOOTSTRAP_NEON}"
 exit ${EXIT_CODE}

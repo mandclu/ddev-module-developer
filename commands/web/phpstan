@@ -28,46 +28,56 @@ else
   esac
 fi
 
-# If the project provides its own phpstan config, use it as-is.
+# If the project root provides its own phpstan config, use it as-is.
 for config in phpstan.neon phpstan.neon.dist phpstan.dist.neon; do
   if [ -f "${DDEV_APPROOT}/${config}" ]; then
     exec "${PHPSTAN}" "$@"
   fi
 done
 
-# No project config found. Build a temporary neon that includes
-# mglaman/phpstan-drupal (pre-installed globally; in CI it comes from the
-# Docker image).
+# If the current directory (e.g. a module) has its own phpstan config, use it
+# with --autoload-file pointing at the project vendor. This matches exactly what
+# the Drupal GitLab CI template does: cd into the module dir and run
+# phpstan analyze . --autoload-file=<project>/vendor/autoload.php
+# The --autoload-file flag also lets mglaman/phpstan-drupal detect the Drupal
+# root by walking up from the autoload path, which is required for class stubs.
+for config in phpstan.neon phpstan.neon.dist phpstan.dist.neon; do
+  if [ -f "./${config}" ]; then
+    exec "${PHPSTAN}" --configuration="./${config}" --autoload-file="${DDEV_APPROOT}/vendor/autoload.php" "$@"
+  fi
+done
+
+# No config found at the project root or current directory. Build a temporary
+# neon that wires up mglaman/phpstan-drupal (pre-installed globally; in CI it
+# comes from the Docker image) and our bundled defaults.
 #
-# mglaman's drupal-autoloader.php calls InstalledVersions::getInstallPath()
-# to locate drupal/core, but the global phpstan phar only knows about its own
-# bundled packages. Drupal/core lives in the project's vendor directory. We fix
-# this by loading the project's vendor/autoload.php as a bootstrap file BEFORE
-# drupal-autoloader.php runs — phpstan loads bootstrapFiles from earlier
-# includes() entries before later ones, so we inject a one-liner neon as the
-# very first include.
+# Use --autoload-file instead of a bootstrapFiles neon: it loads the project's
+# vendor/autoload.php before analysis so InstalledVersions knows about
+# drupal/core, and it gives mglaman the path it needs to detect the Drupal root.
 MGLAMAN_EXT="/usr/local/composer/vendor/mglaman/phpstan-drupal/extension.neon"
 MGLAMAN_RULES="/usr/local/composer/vendor/mglaman/phpstan-drupal/rules.neon"
-
-BOOTSTRAP_NEON=$(mktemp /tmp/phpstan-bootstrap-XXXXXX.neon)
-cat > "${BOOTSTRAP_NEON}" <<EOF
-parameters:
-  bootstrapFiles:
-    - ${DDEV_APPROOT}/vendor/autoload.php
-EOF
-
 BUNDLED_CONFIG="/mnt/ddev_config/module-developer/config/phpstan.neon"
 
 TMPCONFIG=$(mktemp /tmp/phpstan-XXXXXX.neon)
-cat > "${TMPCONFIG}" <<EOF
+
+# If the project vendor already has mglaman/phpstan-drupal, phpstan/extension-installer
+# will auto-register it via GeneratedConfig.php. Including the global copy on top of
+# that produces duplicate ServiceMap services and a DI container error.
+if [ -f "${DDEV_APPROOT}/vendor/mglaman/phpstan-drupal/extension.neon" ]; then
+  cat > "${TMPCONFIG}" <<EOF
 includes:
-  - ${BOOTSTRAP_NEON}
+  - ${BUNDLED_CONFIG}
+EOF
+else
+  cat > "${TMPCONFIG}" <<EOF
+includes:
   - ${MGLAMAN_EXT}
   - ${MGLAMAN_RULES}
   - ${BUNDLED_CONFIG}
 EOF
+fi
 
-"${PHPSTAN}" --configuration="${TMPCONFIG}" "$@"
+"${PHPSTAN}" --configuration="${TMPCONFIG}" --autoload-file="${DDEV_APPROOT}/vendor/autoload.php" "$@"
 EXIT_CODE=$?
-rm -f "${TMPCONFIG}" "${BOOTSTRAP_NEON}"
+rm -f "${TMPCONFIG}"
 exit ${EXIT_CODE}

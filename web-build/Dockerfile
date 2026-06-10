@@ -28,7 +28,13 @@ RUN composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-in
     && mkdir -p /usr/local/phpcompat \
     && composer -d /usr/local/phpcompat init --no-interaction --name=internal/phpcompat \
     && composer -d /usr/local/phpcompat config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true \
-    && composer -d /usr/local/phpcompat require --no-interaction phpcompatibility/php-compatibility
+    && composer -d /usr/local/phpcompat require --no-interaction phpcompatibility/php-compatibility \
+    # phpunit — isolated to avoid symfony/* / nikic/php-parser conflicts with
+    # phpstan and rector. Version ^11.5 matches drupal/core-dev ^11.x.
+    && mkdir -p /usr/local/phpunit \
+    && composer -d /usr/local/phpunit init --no-interaction --name=internal/phpunit \
+    && composer -d /usr/local/phpunit require --no-interaction phpunit/phpunit:^11.5 \
+    && ln -sf /usr/local/phpunit/vendor/bin/phpunit /usr/local/bin/phpunit
 
 # Node.js code quality tools — installed globally via npm.
 #

@@ -39,6 +39,7 @@ This add-on provides the following DDEV commands, all running inside the web con
 - `ddev phpstan` — Run [PHPStan](https://phpstan.org) static analysis with the Drupal extension.
 - `ddev phpmd` — Run [PHP Mess Detector](https://phpmd.org).
 - `ddev rector` — Run [Drupal Rector](https://github.com/palantirnet/drupal-rector) to find and fix deprecated API usage.
+- `ddev phpunit` — Run [PHPUnit](https://phpunit.de) tests.
 - `ddev stylelint` — Run [Stylelint](https://stylelint.io) on CSS/SCSS files.
 - `ddev eslint` — Run [ESLint](https://eslint.org) on JavaScript and YAML files, with Prettier formatting checks.
 - `ddev cspell` — Run [CSpell](https://cspell.org) spell-checking across project files.
@@ -48,12 +49,39 @@ Pass a path as the first argument to any command to target a specific file or di
 ```sh
 ddev phpcs web/modules/custom/mymodule
 ddev phpstan analyse web/modules/custom/mymodule
+ddev phpunit web/modules/custom/mymodule
 ddev stylelint 'web/modules/custom/mymodule/**/*.css'
 ddev eslint web/modules/custom/mymodule/js
 ddev phpmd web/modules/custom/mymodule text
 ```
 
-Run without a path argument to use each tool's own default discovery (where supported).
+Run without a path argument from inside a module directory to target that module:
+
+```sh
+cd web/modules/custom/mymodule
+ddev phpcs
+ddev phpunit
+```
+
+### PHPUnit prerequisites
+
+`ddev phpunit` requires `drupal/core-dev` to be installed in your project. If it is not already present, add it with:
+
+```sh
+ddev composer require --dev drupal/core-dev -W
+```
+
+The `-W` flag (`--with-all-dependencies`) is needed to allow Composer to adjust the versions of shared packages (such as `sebastian/diff`) to satisfy `phpunit`'s constraints alongside those of `drupal/core`.
+
+If your project has a `phpunit.xml` or `phpunit.xml.dist` in the project root, `ddev phpunit` uses it as-is. Without one, the command bootstraps from `web/core/tests/bootstrap.php` and sets the following DDEV-standard defaults so all test types work out of the box:
+
+| Environment variable             | Default value                               |
+| -------------------------------- | ------------------------------------------- |
+| `SIMPLETEST_BASE_URL`            | `$DDEV_PRIMARY_URL`                         |
+| `SIMPLETEST_DB`                  | `mysql://db:db@db/db`                       |
+| `BROWSERTEST_OUTPUT_DIRECTORY`   | `web/sites/simpletest/browser_output`       |
+
+Override any of these by setting them in `.ddev/config.yaml` under `web_environment` before running the command.
 
 
 ## Configuration

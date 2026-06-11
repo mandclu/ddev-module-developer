@@ -9,13 +9,9 @@
 
 WEB_ROOT="${DDEV_DOCROOT:-web}"
 
-# Normalize absolute host-path arguments to their in-container equivalents so
-# callers can pass full host paths in addition to relative ones. Done before the
-# no-path default below so downstream logic sees container paths.
-# shellcheck source=../../module-developer/lib/host-paths.sh
-source /mnt/ddev_config/module-developer/lib/host-paths.sh
-ddev_normalize_host_paths "$@"
-set -- "${DDEV_NORMALIZED_ARGS[@]}"
+# Sourced before the no-path default below so downstream logic sees container paths.
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
 
 # Default to the current directory when no path argument is given.
 _has_path=0

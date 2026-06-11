@@ -80,6 +80,10 @@ host location, so paths anywhere in the project (including a top-level `recipes/
 directory) are handled. It is a no-op for relative paths, for flags, and for
 absolute paths that do not resolve under the project root.
 
+This behavior comes from `module-developer/lib/init.sh`, which every command
+sources as its first step. `init.sh` is also the home for any future shared
+utilities the commands need.
+
 > [!NOTE]
 > Absolute paths containing glob wildcards (e.g. `/abs/path/**/*.css` for
 > `stylelint`) are left untouched, since the path cannot be matched as it stands.

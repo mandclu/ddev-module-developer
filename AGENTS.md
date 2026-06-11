@@ -17,7 +17,7 @@ Drupal project and run `ddev phpcs`, `ddev phpstan`, etc. with no extra setup.
 commands/web/       # DDEV web-container commands (one file per tool)
 module-developer/
   config/           # Bundled default configs for each tool
-  lib/              # Shared bash helpers sourced by the commands
+  lib/              # init.sh — sourced by every command before it reads "$@"
 web-build/
   Dockerfile        # Installs all tools at container-build time
 install.yaml        # DDEV add-on manifest
@@ -73,26 +73,32 @@ if [ ! -x "${ESLINT}" ]; then
 fi
 ```
 
-### 1b. Normalize absolute host-path arguments
+### 1b. Source `init.sh` before reading arguments
 
-After resolving the binary and before any defaulting or `exec`, every command
-sources the shared helper and rewrites its positional arguments:
+Every command sources the shared init file as its first step — after resolving the
+binary but before it reads `"$@"`, applies defaults, parses arguments, or builds
+derived config/tool arguments:
 
 ```bash
-# shellcheck source=../../module-developer/lib/host-paths.sh
-source /mnt/ddev_config/module-developer/lib/host-paths.sh
-ddev_normalize_host_paths "$@"
-set -- "${DDEV_NORMALIZED_ARGS[@]}"
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
 ```
 
+That single line is the entire hook; there is no per-command boilerplate.
+`module-developer/lib/init.sh` is sourced with no arguments, so inside it `"$@"`
+is the *caller's* positional parameters, and a top-level `set --` in `init.sh`
+rewrites the calling command's `"$@"` in place.
+
+`init.sh` currently normalizes absolute host-path arguments:
 `HostWorkingDir: true` only maps the *current directory* into the container;
-arguments are passed through verbatim. `ddev_normalize_host_paths`
-(`module-developer/lib/host-paths.sh`) converts an absolute *host* path argument
-to its in-container equivalent by stripping leading components until the remainder
-resolves under `${DDEV_APPROOT}`. This lets IDE external tools and agents pass full
-host paths. It is a no-op for relative paths, flags, already-in-container paths, and
-unresolvable paths. The helper must run **before** the no-path default so the
-default and config-resolution logic see container paths.
+arguments are passed through verbatim, so an absolute *host* path argument does not
+resolve inside the container. `init.sh` converts it to its in-container equivalent
+by stripping leading components until the remainder resolves under `${DDEV_APPROOT}`.
+This lets IDE external tools and agents pass full host paths. It is a no-op for
+relative paths, flags, already-in-container paths, and unresolvable paths. `init.sh`
+must be sourced **before** the no-path default so the default and config-resolution
+logic see container paths. `init.sh` is also the designated home for any future
+shared global utilities the commands need.
 
 ### 2. Default to the current directory when no path is given
 
@@ -188,10 +194,11 @@ corresponding file here.
   `drupal/coder`), that binary takes precedence over the globally installed one.
 - **`HostWorkingDir: true` is set on every command** so the container's working
   directory matches wherever the developer ran the `ddev` command on the host.
-- **Host-path arguments are normalized before exec.** Every command sources
-  `module-developer/lib/host-paths.sh` and calls `ddev_normalize_host_paths "$@"`
-  immediately after binary resolution, so absolute host paths passed as arguments
-  resolve inside the container. New commands must follow the same pattern.
+- **Every command sources `init.sh` before reading positional arguments.** A single
+  `source /mnt/ddev_config/module-developer/lib/init.sh` line, placed after binary
+  resolution but before the command reads `"$@"`, applies defaults, or parses
+  arguments, normalizes absolute host-path arguments (and is the hook for any future
+  shared utilities). New commands must follow the same pattern.
 - **Temp files must always be cleaned up.** Commands that create temp neon/config
   files must remove them in all exit paths (capture exit code, then `rm -f`, then
   `exit`).

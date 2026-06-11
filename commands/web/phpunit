@@ -21,12 +21,8 @@ if [ ! -x "${PHPUNIT}" ]; then
   PHPUNIT="phpunit"
 fi
 
-# Normalize absolute host-path arguments to their in-container equivalents so
-# callers can pass full host paths in addition to relative ones.
-# shellcheck source=../../module-developer/lib/host-paths.sh
-source /mnt/ddev_config/module-developer/lib/host-paths.sh
-ddev_normalize_host_paths "$@"
-set -- "${DDEV_NORMALIZED_ARGS[@]}"
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
 
 # Default to the current directory when no path is given. With HostWorkingDir: true
 # this runs tests for whichever module the developer cd'd into on the host.

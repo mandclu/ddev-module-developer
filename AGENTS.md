@@ -30,17 +30,19 @@ tests/test.bats     # Bats integration tests
 Each file in `commands/web/` is a bash script that DDEV injects as a `ddev <name>`
 command running inside the web container.
 
-| Command      | Tool                          | Language |
-| ------------ | ----------------------------- | -------- |
-| `phpcs`      | PHP_CodeSniffer               | PHP      |
-| `phpcbf`     | PHP Code Beautifier and Fixer  | PHP      |
-| `phpstan`    | PHPStan + mglaman/phpstan-drupal | PHP   |
-| `phpmd`      | PHP Mess Detector             | PHP      |
-| `rector`     | Drupal Rector                 | PHP      |
-| `phpcompat`  | PHP compatibility checker     | PHP      |
-| `stylelint`  | Stylelint                     | CSS/SCSS |
-| `eslint`     | ESLint + Prettier + yml plugin | JS/YAML |
-| `cspell`     | CSpell                        | all      |
+| Command        | Tool                                     | Language  |
+| -------------- | ---------------------------------------- | --------- |
+| `checks`       | Orchestrator — runs all CI checks        | all       |
+| `parallel-lint`| php-parallel-lint (PHP syntax)           | PHP       |
+| `phpcs`        | PHP_CodeSniffer                          | PHP       |
+| `phpcbf`       | PHP Code Beautifier and Fixer            | PHP       |
+| `phpstan`      | PHPStan + mglaman/phpstan-drupal         | PHP       |
+| `phpmd`        | PHP Mess Detector                        | PHP       |
+| `rector`       | Drupal Rector                            | PHP       |
+| `phpcompat`    | PHP compatibility checker                | PHP       |
+| `stylelint`    | Stylelint                                | CSS/SCSS  |
+| `eslint`       | ESLint + Prettier + yml plugin           | JS/YAML   |
+| `cspell`       | CSpell                                   | all       |
 
 All PHP tools are installed globally via Composer into `/usr/local/composer/` and
 symlinked into `/usr/local/bin/`. Node.js tools are installed globally via npm.
@@ -137,6 +139,79 @@ Inside the container, bundled config files are mounted at
 resolved at runtime.
 
 
+## `checks` command
+
+`checks` is an orchestrator, not a wrapper around a single binary. It calls the other
+command scripts directly via `bash "${COMMANDS_DIR}/<script>"` — those scripts run in
+the same container context with the same environment variables and working directory.
+Using `bash script` (rather than invoking `ddev <command>` again) avoids spawning a
+new DDEV process per check, and the individual scripts' `exec` calls propagate exit
+codes correctly through the subshell.
+
+### Three phases
+
+**Phase 1 — CI checks** (always, in Drupal GitLab Templates job order):
+`parallel-lint` → `phpcs` → `phpstan` → `eslint` → `stylelint` → `cspell`
+
+**Phase 2 — Bonus checks** (`--bonus` flag only; not part of Drupal CI):
+`phpmd` → `phpcompat`
+
+**Phase 3 — PHPUnit** (only when Phase 1 + 2 produced zero hard failures, and only
+when the Drupal test bootstrap is installed). The bootstrap check mirrors the phpunit
+command itself: `web/core/tests/bootstrap.php` must exist and `vendor/behat/mink`
+must be present.
+
+### GitLab CI variable integration
+
+`checks` reads variables from `${DDEV_APPROOT}/.gitlab-ci.yml` (the project root) —
+not from the host working directory — because the project root is the only reliable
+location for the project's CI config regardless of where the developer ran the command.
+
+**SKIP variables** — a job with its `SKIP_*` variable set to `"1"` is skipped entirely
+and shown as `-` in the summary. Does not affect the exit status.
+
+| Variable              | Skips            |
+| --------------------- | ---------------- |
+| `SKIP_COMPOSER_LINT`  | `parallel-lint`  |
+| `SKIP_PHPCS`          | `phpcs`          |
+| `SKIP_PHPSTAN`        | `phpstan`        |
+| `SKIP_ESLINT`         | `eslint`         |
+| `SKIP_STYLELINT`      | `stylelint`      |
+| `SKIP_CSPELL`         | `cspell`         |
+| `SKIP_PHPUNIT`        | `phpunit`        |
+
+**`_ALLOW_FAILURE` variables** — a job whose allow_failure flag is truthy shows
+failures as `⚠` (warnings) instead of `✗` (hard failures). If every failure in the
+run was a warning, `checks` exits 0 with `Result: passed with warnings`. If any hard
+failure occurred, it exits 1 with `Result: FAILED`.
+
+Per-tool variables (`_PHPCS_ALLOW_FAILURE`, `_PHPSTAN_ALLOW_FAILURE`, etc.) take
+precedence over the global `_ALL_VALIDATE_ALLOW_FAILURE`, matching the precedence
+rules of the GitLab CI pipeline. Bonus checks always use allow_failure = 0; they have
+no GitLab CI job counterpart and therefore no CI variable.
+
+### Exit codes
+- `0` — all checks passed (or all failures were warnings)
+- `1` — one or more hard failures occurred
+
+
+## `parallel-lint` specifics
+
+`parallel-lint` wraps `php-parallel-lint/php-parallel-lint`. It is the fastest check
+in the suite because it only validates PHP syntax (parse errors) and nothing else.
+In the Drupal GitLab CI pipeline it runs inside the `composer-lint` job as the first
+quality gate, providing immediate feedback on broken PHP before heavier tools run.
+
+The command passes `--extensions php,module,install,theme,inc,profile` to match the
+file types Drupal CI checks, and `--exclude vendor --exclude node_modules` to avoid
+scanning third-party code. The `_PARALLEL_LINT_EXTRA` variable from `.gitlab-ci.yml`
+is injected as extra flags, matching the pattern of other commands.
+
+The binary is symlinked as `/usr/local/bin/parallel-lint` (not `php-parallel-lint`,
+which is the legacy alias). The skip variable used by `checks` is `SKIP_COMPOSER_LINT`
+(not `SKIP_PARALLEL_LINT`) because in CI the tool lives inside the `composer-lint` job.
+
+
 ## PHPStan specifics
 
 The Drupal GitLab CI Docker image pre-installs `mglaman/phpstan-drupal`, so the
@@ -217,9 +292,13 @@ corresponding file here.
    `npm install -g`).
 4. If the tool has a configurable default, add a bundled config to
    `module-developer/config/` and list it in `install.yaml`.
-5. Add a Bats test in `tests/test.bats` that verifies the command exits 0 on a
-   clean fixture and produces expected output.
-6. Document the new command in `README.md`.
+5. Add a Bats test in `tests/fixtures.bats` that verifies the command exits 0 on a
+   clean fixture and non-zero on a dirty fixture.
+6. If the new tool has a corresponding Drupal GitLab CI job, add it to the Phase 1
+   sequence in `commands/web/checks` with the appropriate `SKIP_*` and
+   `_*_ALLOW_FAILURE` variable names. Also add `parallel-lint` to the binary loop in
+   `tests/helpers.bash` and list the new command in the `ddev help` assertion.
+7. Document the new command in `README.md` and update the command table in `AGENTS.md`.
 
 
 ## Testing

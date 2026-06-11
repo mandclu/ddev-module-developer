@@ -41,12 +41,13 @@ setup() {
   cd "${TESTDIR}"
   # Remove any project-level config overrides that could leak between tests.
   rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
-        .stylelintrc.json .eslintrc.json rector.php
+        .stylelintrc.json .eslintrc.json rector.php .gitlab-ci.yml
 }
 
 teardown() {
   rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
-        .stylelintrc.json .eslintrc.json rector.php .cspell.json .cspell.json.bak
+        .stylelintrc.json .eslintrc.json rector.php .cspell.json .cspell.json.bak \
+        .gitlab-ci.yml
 }
 
 # ---------------------------------------------------------------------------
@@ -204,4 +205,82 @@ teardown() {
   run ddev phpunit
   assert_failure
   assert_output --partial "bootstrap"
+}
+
+# ---------------------------------------------------------------------------
+# parallel-lint
+# ---------------------------------------------------------------------------
+
+@test "parallel-lint: exits 0 with a helpful message when binary is not installed" {
+  # Covers the graceful-degradation path. Skipped once the image is rebuilt.
+  if ddev exec "command -v parallel-lint" >/dev/null 2>&1; then
+    skip "parallel-lint is installed; this test covers the not-installed path only"
+  fi
+  run ddev parallel-lint web/modules/custom/clean_module
+  assert_success
+  assert_output --partial "not installed"
+}
+
+@test "parallel-lint: --version exits 0 when binary is installed" {
+  if ! ddev exec "command -v parallel-lint" >/dev/null 2>&1; then
+    skip "parallel-lint not yet installed; run 'ddev restart' to rebuild the web container"
+  fi
+  run ddev exec "parallel-lint --version"
+  assert_success
+}
+
+@test "parallel-lint: clean_module passes PHP syntax check when binary is installed" {
+  if ! ddev exec "command -v parallel-lint" >/dev/null 2>&1; then
+    skip "parallel-lint not yet installed; run 'ddev restart' to rebuild the web container"
+  fi
+  run ddev parallel-lint web/modules/custom/clean_module
+  assert_success
+}
+
+@test "parallel-lint: detects syntax error in bad_syntax.php when binary is installed" {
+  if ! ddev exec "command -v parallel-lint" >/dev/null 2>&1; then
+    skip "parallel-lint not yet installed; run 'ddev restart' to rebuild the web container"
+  fi
+  cp "${BATS_TEST_DIRNAME}/testdata/bad_syntax.php" "${TESTDIR}/bad_syntax.php"
+  run ddev parallel-lint bad_syntax.php
+  assert_failure
+}
+
+# ---------------------------------------------------------------------------
+# checks
+# ---------------------------------------------------------------------------
+
+@test "checks: exits 0 on clean_module when all applicable CI checks pass" {
+  # PHPStan requires vendor/autoload.php which is absent in this bare test
+  # project; skip it so the remaining CI checks exercise the pass path cleanly.
+  cat > .gitlab-ci.yml <<'YAML'
+variables:
+  SKIP_PHPSTAN: "1"
+YAML
+  run ddev checks web/modules/custom/clean_module
+  assert_success
+  assert_output --partial "Result: passed"
+}
+
+@test "checks: exits 1 on dirty_module when CI checks fail" {
+  run ddev checks web/modules/custom/dirty_module
+  assert_failure
+  assert_output --partial "Result: FAILED"
+}
+
+@test "checks: --bonus flag includes phpmd and phpcompat in output" {
+  run ddev checks --bonus web/modules/custom/dirty_module
+  assert_failure
+  assert_output --partial "PHP Mess Detector"
+  assert_output --partial "PHP Compatibility"
+}
+
+@test "checks: phpunit is skipped automatically when Drupal bootstrap is absent" {
+  cat > .gitlab-ci.yml <<'YAML'
+variables:
+  SKIP_PHPSTAN: "1"
+YAML
+  run ddev checks web/modules/custom/clean_module
+  assert_output --partial "PHPUnit"
+  assert_output --partial "skipped"
 }

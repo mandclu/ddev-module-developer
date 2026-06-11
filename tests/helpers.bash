@@ -40,6 +40,9 @@ health_checks() {
   # Every command binary must be on PATH inside the web container.
   # phpcompat is excluded: it is a DDEV command script that calls an isolated
   # /usr/local/phpcompat/vendor/bin/phpcs — no standalone binary is on PATH.
+  # parallel-lint is installed at container build time. It is not asserted here
+  # because older images (pre-rebuild) will not have it yet; fixtures.bats has
+  # dedicated tests for both the installed and not-installed paths.
   for cmd in phpcs phpcbf phpstan phpmd rector stylelint eslint cspell phpunit; do
     run ddev exec "command -v ${cmd}"
     assert_success
@@ -65,7 +68,7 @@ health_checks() {
   # All commands must appear in ddev help.
   run ddev help
   assert_success
-  for cmd in phpcs phpcbf phpstan phpmd rector stylelint eslint cspell phpunit phpcompat; do
+  for cmd in checks parallel-lint phpcs phpcbf phpstan phpmd rector stylelint eslint cspell phpunit phpcompat; do
     assert_output --partial "${cmd}"
   done
 

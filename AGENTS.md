@@ -287,18 +287,26 @@ corresponding file here.
 
 1. Add a `commands/web/<toolname>` bash script following the binary-resolution /
    default-path / config-priority pattern above.
-2. Add the command to `install.yaml` under `project_files`.
-3. Add tool installation to `web-build/Dockerfile` (Composer global require or
+2. Source `module-developer/lib/init.sh` after binary resolution and **before** the
+   script reads `"$@"`, applies defaults, or parses arguments, so the command gets
+   host-path normalization (see "Source `init.sh` before reading arguments" above):
+   ```bash
+   # shellcheck source=../../module-developer/lib/init.sh
+   source /mnt/ddev_config/module-developer/lib/init.sh
+   ```
+   Skipping this means absolute host paths silently won't resolve for the command.
+3. Add the command to `install.yaml` under `project_files`.
+4. Add tool installation to `web-build/Dockerfile` (Composer global require or
    `npm install -g`).
-4. If the tool has a configurable default, add a bundled config to
+5. If the tool has a configurable default, add a bundled config to
    `module-developer/config/` and list it in `install.yaml`.
-5. Add a Bats test in `tests/fixtures.bats` that verifies the command exits 0 on a
+6. Add a Bats test in `tests/fixtures.bats` that verifies the command exits 0 on a
    clean fixture and non-zero on a dirty fixture.
-6. If the new tool has a corresponding Drupal GitLab CI job, add it to the Phase 1
+7. If the new tool has a corresponding Drupal GitLab CI job, add it to the Phase 1
    sequence in `commands/web/checks` with the appropriate `SKIP_*` and
    `_*_ALLOW_FAILURE` variable names. Also add `parallel-lint` to the binary loop in
    `tests/helpers.bash` and list the new command in the `ddev help` assertion.
-7. Document the new command in `README.md` and update the command table in `AGENTS.md`.
+8. Document the new command in `README.md` and update the command table in `AGENTS.md`.
 
 
 ## Testing

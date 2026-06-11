@@ -96,3 +96,44 @@ XML
   assert_output --partial "LOCAL_PHPCS"
   assert_output --partial "/var/www/html/web/modules/custom/clean_module"
 }
+
+@test "flags are preserved and only the absolute path argument is rewritten" {
+  make_shim "${TESTDIR}/vendor/bin/phpunit" LOCAL_PHPUNIT
+  cat > "${TESTDIR}/phpunit.xml" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit/>
+XML
+  cd "${TESTDIR}"
+
+  run ddev phpunit --stop-on-failure "${TESTDIR}/web/modules/custom/clean_module"
+  assert_success
+  assert_output --partial "ARGS:--stop-on-failure /var/www/html/web/modules/custom/clean_module"
+}
+
+@test "multiple absolute path arguments are each rewritten" {
+  make_shim "${TESTDIR}/vendor/bin/phpunit" LOCAL_PHPUNIT
+  cat > "${TESTDIR}/phpunit.xml" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit/>
+XML
+  cd "${TESTDIR}"
+
+  run ddev phpunit "${TESTDIR}/web/modules/custom/clean_module" \
+                   "${TESTDIR}/web/modules/custom/clean_module/src"
+  assert_success
+  assert_output --partial "ARGS:/var/www/html/web/modules/custom/clean_module /var/www/html/web/modules/custom/clean_module/src"
+}
+
+@test "an absolute path containing spaces is rewritten as a single argument" {
+  copy_fixture clean_module "clean module"
+  make_shim "${TESTDIR}/vendor/bin/phpunit" LOCAL_PHPUNIT
+  cat > "${TESTDIR}/phpunit.xml" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit/>
+XML
+  cd "${TESTDIR}"
+
+  run ddev phpunit "${TESTDIR}/web/modules/custom/clean module"
+  assert_success
+  assert_output --partial "ARGS:/var/www/html/web/modules/custom/clean module"
+}

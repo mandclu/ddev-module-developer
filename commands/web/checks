@@ -14,6 +14,9 @@ COMMANDS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # variables that mirror what the Drupal GitLab CI pipeline respects.
 CI_YML="${DDEV_APPROOT}/.gitlab-ci.yml"
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------

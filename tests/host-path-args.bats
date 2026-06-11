@@ -81,6 +81,36 @@ XML
   assert_output --partial "ARGS:/nonexistent/host/only/path"
 }
 
+@test "parallel-lint rewrites an absolute host path passed as its argument" {
+  make_shim "${TESTDIR}/vendor/bin/parallel-lint" LOCAL_PARALLEL_LINT
+  cd "${TESTDIR}"
+
+  run ddev parallel-lint "${TESTDIR}/web/modules/custom/clean_module"
+  assert_success
+  assert_output --partial "LOCAL_PARALLEL_LINT"
+  assert_output --partial "/var/www/html/web/modules/custom/clean_module"
+}
+
+@test "checks rewrites an absolute host path in its running summary" {
+  # Skip all CI checks so this test verifies path normalisation only.
+  cat > "${TESTDIR}/.gitlab-ci.yml" <<'YAML'
+variables:
+  SKIP_COMPOSER_LINT: "1"
+  SKIP_PHPCS: "1"
+  SKIP_PHPSTAN: "1"
+  SKIP_ESLINT: "1"
+  SKIP_STYLELINT: "1"
+  SKIP_CSPELL: "1"
+  SKIP_PHPUNIT: "1"
+YAML
+  cd "${TESTDIR}"
+
+  run ddev checks "${TESTDIR}/web/modules/custom/clean_module"
+  assert_success
+  assert_output --partial "Running Drupal GitLab CI checks on: /var/www/html/web/modules/custom/clean_module"
+  rm -f "${TESTDIR}/.gitlab-ci.yml"
+}
+
 @test "phpcs rewrites an absolute host path passed as its argument" {
   make_shim "${TESTDIR}/vendor/bin/phpcs" LOCAL_PHPCS
   cat > "${TESTDIR}/phpcs.xml" <<'XML'

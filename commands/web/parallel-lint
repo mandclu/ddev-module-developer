@@ -19,6 +19,9 @@ if [ ! -x "${PARALLEL_LINT}" ]; then
   PARALLEL_LINT="parallel-lint"
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # Default to the current directory when no path is given, matching CI behaviour
 # where the tool is always passed an explicit path.
 if [ "$#" -eq 0 ]; then

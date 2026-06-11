@@ -102,6 +102,17 @@ must be sourced **before** the no-path default so the default and config-resolut
 logic see container paths. `init.sh` is also the designated home for any future
 shared global utilities the commands need.
 
+**Known limitation — glob wildcards:** arguments containing `*` or `?` are left
+untouched. Pass glob patterns as relative paths (e.g. `"**/*.css"`) rather than
+absolute host paths.
+
+**Known limitation — ambiguous path suffix:** the algorithm strips one leading
+component at a time and stops at the first suffix that resolves under
+`${DDEV_APPROOT}`. If the project contains a directory whose name matches a trailing
+component of the host path (e.g. a `web/` docroot and a host path of
+`/anything/web`), the shorter match wins. In practice this is rare because IDE tools
+pass full module paths, not short generic names.
+
 ### 2. Default to the current directory when no path is given
 
 Commands that accept a bare path argument (e.g. `phpcs`, `phpcbf`) default to `.`
@@ -132,11 +143,12 @@ arguments (`phpmd`) handle their own argument defaulting separately.
    `phpcs.xml.dist` from the GitLab Templates repository at runtime so it stays
    current).
 
-Inside the container, bundled config files are mounted at
-`/mnt/ddev_config/module-developer/config/`. **Do not use the old path
-`/mnt/ddev_config/module-developer/config/`** — the correct path is
-`${DDEV_APPROOT}/.ddev/module-developer/config/` or the equivalent absolute path
-resolved at runtime.
+Inside the container, bundled config files are available at both
+`/mnt/ddev_config/module-developer/config/<file>` (DDEV's mount point) and
+`${DDEV_APPROOT}/.ddev/module-developer/config/<file>` (the host-side path as seen
+from inside the container). Both resolve to the same files. Prefer the
+`${DDEV_APPROOT}/.ddev/` form in new command scripts for consistency with how other
+paths in the scripts are expressed.
 
 
 ## `checks` command

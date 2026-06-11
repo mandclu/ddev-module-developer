@@ -19,6 +19,9 @@ if [ ! -x "${CSPELL}" ]; then
   fi
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # Download prepare-cspell.php from the GitLab Templates repository, exactly
 # as the CI job does.
 PREPARE_SCRIPT=$(mktemp /tmp/prepare-cspell-XXXXXX.php)

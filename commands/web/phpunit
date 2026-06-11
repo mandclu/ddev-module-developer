@@ -21,6 +21,9 @@ if [ ! -x "${PHPUNIT}" ]; then
   PHPUNIT="phpunit"
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # Default to the current directory when no path is given. With HostWorkingDir: true
 # this runs tests for whichever module the developer cd'd into on the host.
 if [ "$#" -eq 0 ]; then

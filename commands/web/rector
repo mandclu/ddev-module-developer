@@ -14,6 +14,9 @@ if [ ! -x "${RECTOR}" ]; then
   RECTOR="rector"
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # If the project provides its own rector config, use it as-is.
 for config in rector.php rector.php.dist; do
   if [ -f "${DDEV_APPROOT}/${config}" ]; then

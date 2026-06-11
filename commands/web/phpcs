@@ -15,6 +15,9 @@ if [ ! -x "${PHPCS}" ]; then
   PHPCS="phpcs"
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # Default to the current directory when no path is given, matching CI behaviour
 # where phpcs is always passed an explicit directory ($DRUPAL_PROJECT_FOLDER).
 if [ "$#" -eq 0 ]; then

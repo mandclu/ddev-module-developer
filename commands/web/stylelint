@@ -18,6 +18,9 @@ if [ ! -x "${STYLELINT}" ]; then
   fi
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # Parse _STYLELINT_EXTRA from .gitlab-ci.yml if present.
 if [ -f ".gitlab-ci.yml" ]; then
   value=$(grep -m1 "^\s*_STYLELINT_EXTRA:" ".gitlab-ci.yml" | sed -E "s/^\s*_STYLELINT_EXTRA:\s*//" | tr -d "'\"")

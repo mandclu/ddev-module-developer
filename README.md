@@ -68,6 +68,37 @@ ddev phpcs
 ddev phpunit
 ```
 
+### Absolute host paths
+
+In addition to relative paths, every command accepts an **absolute path on the
+host** as an argument and rewrites it to the equivalent path inside the container.
+This is convenient for IDE "external tools", file watchers, and AI agents that
+naturally work with full host paths:
+
+```sh
+ddev phpcs /Users/me/Sites/myproject/web/modules/custom/mymodule
+ddev phpstan analyse /Users/me/Sites/myproject/web/modules/custom/mymodule
+```
+
+This behavior comes from `module-developer/lib/init.sh`, which every command
+sources as its first step (`init.sh` is also the home for any future shared
+utilities). The match is host-root agnostic — because the host project path is not
+known inside the container, it strips leading path components until the remainder
+resolves under the project root, choosing the longest (most specific) match. It is
+a no-op for relative paths, for flags, and for absolute paths that do not resolve
+under the project root.
+
+> [!NOTE]
+> Two limitations follow from matching by suffix:
+> - **Glob wildcards** (e.g. `/abs/path/**/*.css` for `stylelint`) are left
+>   untouched, since the path cannot be matched as it stands. Pass those patterns
+>   relative to the project root instead.
+> - **Coincidental suffixes**: an absolute path that does not exist in the container
+>   but whose trailing component happens to equal a top-level project entry (e.g.
+>   `/unrelated/web` matching the docroot) is rewritten to that entry rather than
+>   passed through. For paths that are not inside the project, pass them relative or
+>   `cd` to them rather than passing an unrelated absolute path.
+
 
 ## Running all checks
 
@@ -146,6 +177,7 @@ Per-tool variables take precedence over `_ALL_VALIDATE_ALLOW_FAILURE`, matching 
 | `SKIP_STYLELINT: "1"` | Skips `stylelint` |
 | `SKIP_CSPELL: "1"` | Skips `cspell` |
 | `SKIP_PHPUNIT: "1"` | Skips `phpunit` |
+
 
 ### PHPUnit prerequisites
 

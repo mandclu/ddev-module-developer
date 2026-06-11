@@ -15,6 +15,9 @@ if [ ! -x "${PHPMD}" ]; then
   PHPMD="phpmd"
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 if [ $# -eq 0 ]; then
   echo "Usage: ddev phpmd <path> <format> [ruleset]"
   echo ""

@@ -7,6 +7,9 @@
 ## ExecRaw: true
 ## HostWorkingDir: true
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 exec /usr/local/phpcompat/vendor/bin/phpcs \
   --runtime-set testVersion 8.2- \
   --standard=PHPCompatibility \

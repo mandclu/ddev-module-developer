@@ -13,6 +13,9 @@ if [ ! -x "${PHPSTAN}" ]; then
   PHPSTAN="phpstan"
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # phpstan requires an explicit subcommand (analyse, clear-result-cache, etc.).
 # When none is given, default to 'analyse .' so that `ddev phpstan` and
 # `ddev phpstan .` both work without the user spelling out the subcommand.

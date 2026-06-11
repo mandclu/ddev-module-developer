@@ -14,6 +14,14 @@ COMMANDS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # variables that mirror what the Drupal GitLab CI pipeline respects.
 CI_YML="${DDEV_APPROOT}/.gitlab-ci.yml"
 
+# Normalize absolute host-path arguments before parsing, so an absolute host path
+# given as TARGET becomes a container path here. This matters because TARGET is
+# used to build derived arguments such as "${TARGET}/**/*.css" for stylelint — a
+# glob that the per-command normalization deliberately leaves untouched, so it must
+# already be a container path by the time it is constructed.
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------

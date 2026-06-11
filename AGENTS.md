@@ -17,6 +17,7 @@ Drupal project and run `ddev phpcs`, `ddev phpstan`, etc. with no extra setup.
 commands/web/       # DDEV web-container commands (one file per tool)
 module-developer/
   config/           # Bundled default configs for each tool
+  lib/              # init.sh — sourced by every command before it reads "$@"
 web-build/
   Dockerfile        # Installs all tools at container-build time
 install.yaml        # DDEV add-on manifest
@@ -74,6 +75,44 @@ if [ ! -x "${ESLINT}" ]; then
 fi
 ```
 
+### 1b. Source `init.sh` before reading arguments
+
+Every command sources the shared init file as its first step — after resolving the
+binary but before it reads `"$@"`, applies defaults, parses arguments, or builds
+derived config/tool arguments:
+
+```bash
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+```
+
+That single line is the entire hook; there is no per-command boilerplate.
+`module-developer/lib/init.sh` is sourced with no arguments, so inside it `"$@"`
+is the *caller's* positional parameters, and a top-level `set --` in `init.sh`
+rewrites the calling command's `"$@"` in place.
+
+`init.sh` currently normalizes absolute host-path arguments:
+`HostWorkingDir: true` only maps the *current directory* into the container;
+arguments are passed through verbatim, so an absolute *host* path argument does not
+resolve inside the container. `init.sh` converts it to its in-container equivalent
+by stripping leading components until the remainder resolves under `${DDEV_APPROOT}`.
+This lets IDE external tools and agents pass full host paths. It is a no-op for
+relative paths, flags, already-in-container paths, and unresolvable paths. `init.sh`
+must be sourced **before** the no-path default so the default and config-resolution
+logic see container paths. `init.sh` is also the designated home for any future
+shared global utilities the commands need.
+
+**Known limitation — glob wildcards:** arguments containing `*` or `?` are left
+untouched. Pass glob patterns as relative paths (e.g. `"**/*.css"`) rather than
+absolute host paths.
+
+**Known limitation — ambiguous path suffix:** the algorithm strips one leading
+component at a time and stops at the first suffix that resolves under
+`${DDEV_APPROOT}`. If the project contains a directory whose name matches a trailing
+component of the host path (e.g. a `web/` docroot and a host path of
+`/anything/web`), the shorter match wins. In practice this is rare because IDE tools
+pass full module paths, not short generic names.
+
 ### 2. Default to the current directory when no path is given
 
 Commands that accept a bare path argument (e.g. `phpcs`, `phpcbf`) default to `.`
@@ -104,11 +143,12 @@ arguments (`phpmd`) handle their own argument defaulting separately.
    `phpcs.xml.dist` from the GitLab Templates repository at runtime so it stays
    current).
 
-Inside the container, bundled config files are mounted at
-`/mnt/ddev_config/module-developer/config/`. **Do not use the old path
-`/mnt/ddev_config/module-developer/config/`** — the correct path is
-`${DDEV_APPROOT}/.ddev/module-developer/config/` or the equivalent absolute path
-resolved at runtime.
+Inside the container, bundled config files are available at both
+`/mnt/ddev_config/module-developer/config/<file>` (DDEV's mount point) and
+`${DDEV_APPROOT}/.ddev/module-developer/config/<file>` (the host-side path as seen
+from inside the container). Both resolve to the same files. Prefer the
+`${DDEV_APPROOT}/.ddev/` form in new command scripts for consistency with how other
+paths in the scripts are expressed.
 
 
 ## `checks` command
@@ -241,6 +281,11 @@ corresponding file here.
   `drupal/coder`), that binary takes precedence over the globally installed one.
 - **`HostWorkingDir: true` is set on every command** so the container's working
   directory matches wherever the developer ran the `ddev` command on the host.
+- **Every command sources `init.sh` before reading positional arguments.** A single
+  `source /mnt/ddev_config/module-developer/lib/init.sh` line, placed after binary
+  resolution but before the command reads `"$@"`, applies defaults, or parses
+  arguments, normalizes absolute host-path arguments (and is the hook for any future
+  shared utilities). New commands must follow the same pattern.
 - **Temp files must always be cleaned up.** Commands that create temp neon/config
   files must remove them in all exit paths (capture exit code, then `rm -f`, then
   `exit`).
@@ -254,18 +299,26 @@ corresponding file here.
 
 1. Add a `commands/web/<toolname>` bash script following the binary-resolution /
    default-path / config-priority pattern above.
-2. Add the command to `install.yaml` under `project_files`.
-3. Add tool installation to `web-build/Dockerfile` (Composer global require or
+2. Source `module-developer/lib/init.sh` after binary resolution and **before** the
+   script reads `"$@"`, applies defaults, or parses arguments, so the command gets
+   host-path normalization (see "Source `init.sh` before reading arguments" above):
+   ```bash
+   # shellcheck source=../../module-developer/lib/init.sh
+   source /mnt/ddev_config/module-developer/lib/init.sh
+   ```
+   Skipping this means absolute host paths silently won't resolve for the command.
+3. Add the command to `install.yaml` under `project_files`.
+4. Add tool installation to `web-build/Dockerfile` (Composer global require or
    `npm install -g`).
-4. If the tool has a configurable default, add a bundled config to
+5. If the tool has a configurable default, add a bundled config to
    `module-developer/config/` and list it in `install.yaml`.
-5. Add a Bats test in `tests/fixtures.bats` that verifies the command exits 0 on a
+6. Add a Bats test in `tests/fixtures.bats` that verifies the command exits 0 on a
    clean fixture and non-zero on a dirty fixture.
-6. If the new tool has a corresponding Drupal GitLab CI job, add it to the Phase 1
+7. If the new tool has a corresponding Drupal GitLab CI job, add it to the Phase 1
    sequence in `commands/web/checks` with the appropriate `SKIP_*` and
    `_*_ALLOW_FAILURE` variable names. Also add `parallel-lint` to the binary loop in
    `tests/helpers.bash` and list the new command in the `ddev help` assertion.
-7. Document the new command in `README.md` and update the command table in `AGENTS.md`.
+8. Document the new command in `README.md` and update the command table in `AGENTS.md`.
 
 
 ## Testing

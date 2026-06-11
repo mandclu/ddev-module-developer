@@ -15,6 +15,9 @@ if [ ! -x "${PHPCBF}" ]; then
   PHPCBF="phpcbf"
 fi
 
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
 # Default to the current directory when no path is given.
 if [ "$#" -eq 0 ]; then
   set -- .

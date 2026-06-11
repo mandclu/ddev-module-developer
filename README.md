@@ -10,6 +10,19 @@ DDEV add-on providing code quality validation commands for Drupal module develop
 All tools are installed at container build time — they are available immediately after `ddev restart` with no per-start installation overhead.
 
 
+## Related add-ons and overlap
+
+There is overlap with other Drupal-focused DDEV add-ons. The key difference is
+the project type each one is designed for.
+
+| Add-on                                                       | Best for                                                     | Typical project layout                                       |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [`UltraBob/ddev-drupal-code-quality`](https://github.com/UltraBob/ddev-drupal-code-quality) | Full Drupal website projects where your site repo already contains Drupal code and custom code. | Existing site/project repo; installs code-quality configs and IDE shims in-place. |
+| [`mandclu/ddev-module-developer`](https://github.com/mandclu/ddev-module-developer) | Drupal contrib module/theme development  but compatible with working on multiple projects in a single DDEV environment. | Standard Drupal or Drupal CMS install, with contrib projects cloned in manually or using other strategies like the --prefer-source composer flag. |
+| [`ddev/ddev-drupal-contrib`](https://github.com/ddev/ddev-drupal-contrib) | Drupal contrib module/theme development where the contrib project is the center of the repo. | Contrib project repo with Drupal scaffolded around it (symlink workflow). |
+| [`justafish/ddev-drupal-core-dev`](https://github.com/justafish/ddev-drupal-core-dev) / [`joachim-n/ddev-drupal-core-dev`](https://github.com/joachim-n/ddev-drupal-core-dev) | Drupal core development.                                     | Drupal core checkout or core-dev project template.           |
+
+
 ## Install
 
 1. If you haven't already, [install Docker and DDEV](https://ddev.readthedocs.io/en/stable/users/install/).

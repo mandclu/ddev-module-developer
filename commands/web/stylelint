@@ -18,6 +18,13 @@ if [ ! -x "${STYLELINT}" ]; then
   fi
 fi
 
+# Normalize absolute host-path arguments to their in-container equivalents so
+# callers can pass full host paths in addition to relative ones.
+# shellcheck source=../../module-developer/lib/host-paths.sh
+source /mnt/ddev_config/module-developer/lib/host-paths.sh
+ddev_normalize_host_paths "$@"
+set -- "${DDEV_NORMALIZED_ARGS[@]}"
+
 # Parse _STYLELINT_EXTRA from .gitlab-ci.yml if present.
 if [ -f ".gitlab-ci.yml" ]; then
   value=$(grep -m1 "^\s*_STYLELINT_EXTRA:" ".gitlab-ci.yml" | sed -E "s/^\s*_STYLELINT_EXTRA:\s*//" | tr -d "'\"")

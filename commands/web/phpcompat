@@ -7,6 +7,13 @@
 ## ExecRaw: true
 ## HostWorkingDir: true
 
+# Normalize absolute host-path arguments to their in-container equivalents so
+# callers can pass full host paths in addition to relative ones.
+# shellcheck source=../../module-developer/lib/host-paths.sh
+source /mnt/ddev_config/module-developer/lib/host-paths.sh
+ddev_normalize_host_paths "$@"
+set -- "${DDEV_NORMALIZED_ARGS[@]}"
+
 exec /usr/local/phpcompat/vendor/bin/phpcs \
   --runtime-set testVersion 8.2- \
   --standard=PHPCompatibility \

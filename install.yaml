@@ -13,6 +13,7 @@ project_files:
   - commands/web/phpunit
   - commands/web/cspell
   - commands/web/phpcompat
+  - module-developer/lib/host-paths.sh
   - module-developer/config/phpcs.xml
   - module-developer/config/phpstan.neon
   - module-developer/config/phpmd-ruleset.xml

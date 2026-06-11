@@ -17,6 +17,7 @@ Drupal project and run `ddev phpcs`, `ddev phpstan`, etc. with no extra setup.
 commands/web/       # DDEV web-container commands (one file per tool)
 module-developer/
   config/           # Bundled default configs for each tool
+  lib/              # Shared bash helpers sourced by the commands
 web-build/
   Dockerfile        # Installs all tools at container-build time
 install.yaml        # DDEV add-on manifest
@@ -71,6 +72,27 @@ if [ ! -x "${ESLINT}" ]; then
   ESLINT="eslint"
 fi
 ```
+
+### 1b. Normalize absolute host-path arguments
+
+After resolving the binary and before any defaulting or `exec`, every command
+sources the shared helper and rewrites its positional arguments:
+
+```bash
+# shellcheck source=../../module-developer/lib/host-paths.sh
+source /mnt/ddev_config/module-developer/lib/host-paths.sh
+ddev_normalize_host_paths "$@"
+set -- "${DDEV_NORMALIZED_ARGS[@]}"
+```
+
+`HostWorkingDir: true` only maps the *current directory* into the container;
+arguments are passed through verbatim. `ddev_normalize_host_paths`
+(`module-developer/lib/host-paths.sh`) converts an absolute *host* path argument
+to its in-container equivalent by stripping leading components until the remainder
+resolves under `${DDEV_APPROOT}`. This lets IDE external tools and agents pass full
+host paths. It is a no-op for relative paths, flags, already-in-container paths, and
+unresolvable paths. The helper must run **before** the no-path default so the
+default and config-resolution logic see container paths.
 
 ### 2. Default to the current directory when no path is given
 
@@ -166,6 +188,10 @@ corresponding file here.
   `drupal/coder`), that binary takes precedence over the globally installed one.
 - **`HostWorkingDir: true` is set on every command** so the container's working
   directory matches wherever the developer ran the `ddev` command on the host.
+- **Host-path arguments are normalized before exec.** Every command sources
+  `module-developer/lib/host-paths.sh` and calls `ddev_normalize_host_paths "$@"`
+  immediately after binary resolution, so absolute host paths passed as arguments
+  resolve inside the container. New commands must follow the same pattern.
 - **Temp files must always be cleaned up.** Commands that create temp neon/config
   files must remove them in all exit paths (capture exit code, then `rm -f`, then
   `exit`).

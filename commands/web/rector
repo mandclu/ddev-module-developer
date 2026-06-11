@@ -14,6 +14,13 @@ if [ ! -x "${RECTOR}" ]; then
   RECTOR="rector"
 fi
 
+# Normalize absolute host-path arguments to their in-container equivalents so
+# callers can pass full host paths in addition to relative ones.
+# shellcheck source=../../module-developer/lib/host-paths.sh
+source /mnt/ddev_config/module-developer/lib/host-paths.sh
+ddev_normalize_host_paths "$@"
+set -- "${DDEV_NORMALIZED_ARGS[@]}"
+
 # If the project provides its own rector config, use it as-is.
 for config in rector.php rector.php.dist; do
   if [ -f "${DDEV_APPROOT}/${config}" ]; then

@@ -13,6 +13,13 @@ if [ ! -x "${PHPSTAN}" ]; then
   PHPSTAN="phpstan"
 fi
 
+# Normalize absolute host-path arguments to their in-container equivalents so
+# callers can pass full host paths in addition to relative ones.
+# shellcheck source=../../module-developer/lib/host-paths.sh
+source /mnt/ddev_config/module-developer/lib/host-paths.sh
+ddev_normalize_host_paths "$@"
+set -- "${DDEV_NORMALIZED_ARGS[@]}"
+
 # phpstan requires an explicit subcommand (analyse, clear-result-cache, etc.).
 # When none is given, default to 'analyse .' so that `ddev phpstan` and
 # `ddev phpstan .` both work without the user spelling out the subcommand.

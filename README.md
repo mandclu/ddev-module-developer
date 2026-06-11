@@ -63,6 +63,28 @@ ddev phpcs
 ddev phpunit
 ```
 
+### Absolute host paths
+
+In addition to relative paths, every command accepts an **absolute path on the
+host** as an argument and rewrites it to the equivalent path inside the container.
+This is convenient for IDE "external tools", file watchers, and AI agents that
+naturally work with full host paths:
+
+```sh
+ddev phpcs /Users/me/Sites/myproject/web/modules/custom/mymodule
+ddev phpstan analyse /Users/me/Sites/myproject/web/modules/custom/mymodule
+```
+
+The rewrite is host-root agnostic — it does not assume a particular docroot or
+host location, so paths anywhere in the project (including a top-level `recipes/`
+directory) are handled. It is a no-op for relative paths, for flags, and for
+absolute paths that do not resolve under the project root.
+
+> [!NOTE]
+> Absolute paths containing glob wildcards (e.g. `/abs/path/**/*.css` for
+> `stylelint`) are left untouched, since the path cannot be matched as it stands.
+> Pass those patterns relative to the project root instead.
+
 ### PHPUnit prerequisites
 
 `ddev phpunit` requires `drupal/core-dev` to be installed in your project. If it is not already present, add it with:

@@ -42,6 +42,11 @@ teardown() {
   run ddev restart -y
   assert_success
   health_checks
+  # parallel-lint is installed by the Dockerfile in this add-on; verify the
+  # binary is on PATH after the container is built from the local directory.
+  run ddev exec "command -v parallel-lint"
+  assert_success
+  assert_output --partial "parallel-lint"
 }
 
 # bats test_tags=release

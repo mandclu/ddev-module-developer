@@ -37,7 +37,8 @@ setup() {
   # Start each test with no project-level config overrides.
   rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
         phpstan.dist.neon .stylelintrc .stylelintrc.json .stylelintrc.yml \
-        .eslintrc .eslintrc.json .eslintrc.yml rector.php rector.php.dist
+        .eslintrc .eslintrc.json .eslintrc.yml rector.php rector.php.dist \
+        .gitlab-ci.yml
   rm -rf web/core
 }
 
@@ -46,7 +47,7 @@ teardown() {
   rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
         phpstan.dist.neon .stylelintrc .stylelintrc.json .stylelintrc.yml \
         .eslintrc .eslintrc.json .eslintrc.yml rector.php rector.php.dist custom-rules.xml \
-        .cspell.json .cspell.json.bak
+        .cspell.json .cspell.json.bak .gitlab-ci.yml
   rm -rf web/core
 }
 
@@ -277,4 +278,45 @@ PHP
   ddev rector process --dry-run || true
   run ddev exec "ls /tmp/rector-*.php 2>/dev/null | wc -l | tr -d ' '"
   assert_output "0"
+}
+
+# ---------------------------------------------------------------------------
+# checks — CI variable integration
+# ---------------------------------------------------------------------------
+
+@test "checks: SKIP_PHPCS in .gitlab-ci.yml skips phpcs and notes it in output" {
+  cat > .gitlab-ci.yml <<'YAML'
+variables:
+  SKIP_PHPCS: "1"
+YAML
+  # dirty_module will still fail other checks; we only assert phpcs was skipped.
+  run ddev checks web/modules/custom/dirty_module
+  assert_output --partial "SKIP_PHPCS"
+  # phpcs did not run — phpcs.xml.dist was not downloaded.
+  [ ! -f phpcs.xml.dist ]
+}
+
+@test "checks: _ALL_VALIDATE_ALLOW_FAILURE causes all CI failures to show as warnings" {
+  cat > .gitlab-ci.yml <<'YAML'
+variables:
+  _ALL_VALIDATE_ALLOW_FAILURE: "1"
+YAML
+  run ddev checks web/modules/custom/dirty_module
+  assert_success
+  assert_output --partial "passed with warnings"
+  assert_output --partial "⚠"
+}
+
+@test "checks: per-tool _PHPCS_ALLOW_FAILURE overrides the global allow_failure flag" {
+  # Global says allow nothing to fail; phpcs overrides to allow failure.
+  cat > .gitlab-ci.yml <<'YAML'
+variables:
+  _ALL_VALIDATE_ALLOW_FAILURE: "0"
+  _PHPCS_ALLOW_FAILURE: "1"
+YAML
+  run ddev checks web/modules/custom/dirty_module
+  # dirty_module fails phpcs (warning) and likely other checks (hard failures),
+  # so the overall result is FAILED — but phpcs must appear as a warning, not ✗.
+  assert_output --partial "⚠"
+  assert_output --partial "PHP CodeSniffer"
 }

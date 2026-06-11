@@ -3,6 +3,8 @@ ddev_version_constraint: ">= v1.23.0"
 
 project_files:
   - web-build/Dockerfile
+  - commands/web/checks
+  - commands/web/parallel-lint
   - commands/web/phpcs
   - commands/web/phpcbf
   - commands/web/phpstan
@@ -29,15 +31,19 @@ post_install_actions:
     echo "Run 'ddev restart' to build the updated web container."
     echo "The following commands will be available after restart:"
     echo ""
-    echo "  ddev phpcs      PHP_CodeSniffer (Drupal/DrupalPractice standards)"
-    echo "  ddev phpcbf     PHP Code Beautifier and Fixer (auto-fix phpcs violations)"
-    echo "  ddev phpstan    PHPStan static analysis (with Drupal extension)"
-    echo "  ddev phpmd      PHP Mess Detector"
-    echo "  ddev rector     Drupal Rector (automated deprecation fixes)"
-    echo "  ddev stylelint  Stylelint (CSS/SCSS, with Prettier)"
-    echo "  ddev eslint     ESLint (JavaScript + YAML, with Prettier)"
-    echo "  ddev phpunit    PHPUnit (with Drupal bootstrap)"
-    echo "  ddev cspell     CSpell (spell-checking)"
+    echo "  ddev checks        Run all Drupal GitLab CI checks (parallel-lint, phpcs, phpstan,"
+    echo "                     eslint, stylelint, cspell) then phpunit if all pass."
+    echo "                     Use --bonus to also run phpmd and phpcompat."
+    echo "  ddev parallel-lint PHP syntax checking (php-parallel-lint)"
+    echo "  ddev phpcs         PHP_CodeSniffer (Drupal/DrupalPractice standards)"
+    echo "  ddev phpcbf        PHP Code Beautifier and Fixer (auto-fix phpcs violations)"
+    echo "  ddev phpstan       PHPStan static analysis (with Drupal extension)"
+    echo "  ddev phpmd         PHP Mess Detector"
+    echo "  ddev rector        Drupal Rector (automated deprecation fixes)"
+    echo "  ddev stylelint     Stylelint (CSS/SCSS, with Prettier)"
+    echo "  ddev eslint        ESLint (JavaScript + YAML, with Prettier)"
+    echo "  ddev phpunit       PHPUnit (with Drupal bootstrap)"
+    echo "  ddev cspell        CSpell (spell-checking)"
     echo ""
     echo "Default configs are in .ddev/module-developer/config/."
     echo "Place phpcs.xml, phpstan.neon, .stylelintrc.json, etc. in your project"

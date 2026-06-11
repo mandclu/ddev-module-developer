@@ -29,10 +29,11 @@ jobs:
     # The test action installs its Bats tooling with `brew install`. Recent
     # Homebrew versions enable a Bubblewrap build sandbox that cannot initialise
     # on GitHub's runners ("Bubblewrap is installed but cannot create a rootless
-    # sandbox"), failing the job before any test runs. Disable the sandbox so the
-    # install succeeds.
+    # sandbox"), failing the job before any test runs. Disable Homebrew's Linux
+    # sandbox so the install succeeds (the variable Homebrew itself recommends in
+    # that error message).
     env:
-      HOMEBREW_NO_SANDBOX: "1"
+      HOMEBREW_NO_SANDBOX_LINUX: "1"
     strategy:
       matrix:
         ddev_version: [stable, HEAD]

@@ -12,11 +12,13 @@ project_files:
   - commands/web/eslint
   - commands/web/phpunit
   - commands/web/cspell
+  - commands/web/phpcompat
   - module-developer/config/phpcs.xml
   - module-developer/config/phpstan.neon
   - module-developer/config/phpmd-ruleset.xml
   - module-developer/config/.stylelintrc.json
   - module-developer/config/.eslintrc.json
+  - module-developer/config/.prettierrc.json
 
 post_install_actions:
   - |

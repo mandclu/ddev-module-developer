@@ -1,0 +1,207 @@
+#!/usr/bin/env bats
+
+# Per-command detection tests using fixture modules with intentional violations.
+#
+# A single DDEV project is created once for the whole file (setup_file) to keep
+# the suite fast. Individual tests create/remove config overrides as needed.
+#
+# Run: bats tests/fixtures.bats
+
+load helpers
+
+setup_file() {
+  set -eu -o pipefail
+
+  export PROJNAME="test-module-developer-fixtures"
+  export TESTDIR="${HOME}/tmp/bats-ddev/${PROJNAME}"
+  export DIR="$(cd "$(dirname "${BATS_TEST_FILENAME}")/.." && pwd)"
+
+  mkdir -p "${TESTDIR}"
+  cd "${TESTDIR}"
+  ddev config --project-type=drupal --project-name="${PROJNAME}" --docroot=web
+  ddev add-on get "${DIR}"
+  ddev start -y
+
+  # Stage fixture modules and the phpcompat test file once for all tests.
+  copy_fixture dirty_module
+  copy_fixture clean_module
+  mkdir -p "${TESTDIR}/web/modules/custom"
+  cp "${BATS_TEST_DIRNAME}/testdata/phpcompat_bad.php" "${TESTDIR}/phpcompat_bad.php"
+
+  # rector targets web/modules/custom; ensure the directory exists.
+  mkdir -p "${TESTDIR}/web/modules/custom"
+}
+
+teardown_file() {
+  cd "${TESTDIR}" || true
+  ddev delete -Oy || true
+}
+
+setup() {
+  cd "${TESTDIR}"
+  # Remove any project-level config overrides that could leak between tests.
+  rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
+        .stylelintrc.json .eslintrc.json rector.php
+}
+
+teardown() {
+  rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
+        .stylelintrc.json .eslintrc.json rector.php .cspell.json .cspell.json.bak
+}
+
+# ---------------------------------------------------------------------------
+# phpcs
+# ---------------------------------------------------------------------------
+
+@test "phpcs: detects violations in dirty_module and exits 1" {
+  run ddev phpcs web/modules/custom/dirty_module
+  assert_failure
+  assert_output --partial "ERROR"
+}
+
+@test "phpcs: clean_module passes all Drupal coding standards and exits 0" {
+  run ddev phpcs web/modules/custom/clean_module
+  assert_success
+}
+
+# ---------------------------------------------------------------------------
+# phpcbf
+# ---------------------------------------------------------------------------
+
+@test "phpcbf: runs without a fatal configuration error on dirty_module" {
+  # phpcbf exits 0 (all fixed) or 1 (some fixed, remaining violations).
+  # Exit 2+ means a fatal configuration error.
+  run ddev phpcbf web/modules/custom/dirty_module
+  [ "${status}" -le 1 ]
+}
+
+# ---------------------------------------------------------------------------
+# phpmd
+# ---------------------------------------------------------------------------
+
+@test "phpmd: no arguments prints Usage and exits 1" {
+  run ddev phpmd
+  assert_failure
+  assert_output --partial "Usage:"
+}
+
+@test "phpmd: detects unused local variable in BadClass.php and exits non-zero" {
+  run ddev phpmd web/modules/custom/dirty_module/src/BadClass.php text
+  assert_failure
+}
+
+@test "phpmd: clean_module passes all rules and exits 0" {
+  run ddev phpmd web/modules/custom/clean_module text
+  assert_success
+}
+
+# ---------------------------------------------------------------------------
+# stylelint
+# ---------------------------------------------------------------------------
+
+@test "stylelint: detects invalid hex color in bad.css and exits non-zero" {
+  run ddev stylelint "web/modules/custom/dirty_module/css/bad.css"
+  assert_failure
+  assert_output --partial "bad.css"
+}
+
+@test "stylelint: clean CSS passes and exits 0" {
+  run ddev stylelint "web/modules/custom/clean_module/css/good.css"
+  assert_success
+}
+
+@test "stylelint: --fix flag is accepted without a configuration crash" {
+  # --fix exits 0 (all fixed) or 1 (unfixable violations remain); 78 = config error.
+  run ddev stylelint --fix "web/modules/custom/dirty_module/css/bad.css"
+  [ "${status}" -le 2 ]
+}
+
+# ---------------------------------------------------------------------------
+# eslint
+# ---------------------------------------------------------------------------
+
+@test "eslint: detects prettier double-quote violation in bad.js and exits non-zero" {
+  run ddev eslint web/modules/custom/dirty_module/js/bad.js
+  assert_failure
+}
+
+@test "eslint: clean JS passes and exits 0" {
+  run ddev eslint web/modules/custom/clean_module/js/good.js
+  assert_success
+}
+
+# ---------------------------------------------------------------------------
+# cspell
+# ---------------------------------------------------------------------------
+
+@test "cspell: detects misspelling 'speling' in README.md and exits non-zero" {
+  run ddev cspell web/modules/custom/dirty_module/README.md
+  assert_failure
+  assert_output --partial "speling"
+}
+
+@test "cspell: clean PHP file passes and exits 0" {
+  run ddev cspell web/modules/custom/clean_module/clean_module.module
+  assert_success
+}
+
+# ---------------------------------------------------------------------------
+# phpcompat
+# ---------------------------------------------------------------------------
+
+@test "phpcompat: detects each() (removed in PHP 8.0) and exits non-zero" {
+  run ddev phpcompat phpcompat_bad.php
+  assert_failure
+}
+
+@test "phpcompat: clean_module PHP passes PHP 8.2 compatibility check and exits 0" {
+  run ddev phpcompat web/modules/custom/clean_module
+  assert_success
+}
+
+# ---------------------------------------------------------------------------
+# phpstan (smoke tests — full analysis requires a Drupal installation)
+# ---------------------------------------------------------------------------
+
+@test "phpstan: --version exits 0 and prints PHPStan" {
+  run ddev phpstan --version
+  assert_success
+  assert_output --partial "PHPStan"
+}
+
+@test "phpstan: temp neon files are removed after execution" {
+  # Run an analysis (will likely fail due to missing vendor, that's fine).
+  ddev phpstan web/modules/custom/clean_module || true
+  # No temp neon files should remain regardless of the analysis outcome.
+  run ddev exec "ls /tmp/phpstan-*.neon 2>/dev/null | wc -l | tr -d ' '"
+  assert_output "0"
+}
+
+# ---------------------------------------------------------------------------
+# rector (smoke tests — full analysis requires Drupal upgrade sets)
+# ---------------------------------------------------------------------------
+
+@test "rector: binary executes and --version exits 0" {
+  # The auto-generated config requires palantirnet/drupal-rector to be resolvable
+  # from the global autoloader, which is not guaranteed without a project vendor.
+  # Test the binary directly to verify it is installed and runnable.
+  run ddev exec "rector --version"
+  assert_success
+  assert_output --partial "Rector"
+}
+
+@test "rector: temp config file is removed after execution" {
+  ddev rector process --dry-run || true
+  run ddev exec "ls /tmp/rector-*.php 2>/dev/null | wc -l | tr -d ' '"
+  assert_output "0"
+}
+
+# ---------------------------------------------------------------------------
+# phpunit (smoke tests — functional tests require a full Drupal installation)
+# ---------------------------------------------------------------------------
+
+@test "phpunit: exits with a clear message when Drupal bootstrap is not installed" {
+  run ddev phpunit
+  assert_failure
+  assert_output --partial "bootstrap"
+}

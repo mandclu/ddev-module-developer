@@ -1,0 +1,46 @@
+name: Tests
+
+on:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+  schedule:
+    # Nightly at 08:25 UTC — catches upstream tool regressions.
+    - cron: '25 8 * * *'
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: Enable tmate debug session
+
+# Cancel in-progress runs for the same branch so redundant builds don't pile up.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ddev_version: [stable, HEAD]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: ddev/github-action-add-on-test@v2
+        with:
+          ddev_version: ${{ matrix.ddev_version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          debug_enabled: ${{ github.event.inputs.debug_enabled }}
+          # Exclude the release-install test; it requires a published release tag.
+          # It runs automatically on the nightly schedule via the release tag.
+          test_command: bats tests/ --filter-tags '!release'

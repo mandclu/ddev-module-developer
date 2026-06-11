@@ -1,0 +1,7 @@
+<?php
+// Missing @file docblock — violation of Drupal coding standards.
+// 4-space indentation is also a phpcs violation (Drupal requires 2 spaces).
+
+function dirty_module_example() {
+    return 'bad indentation';
+}

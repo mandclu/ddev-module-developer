@@ -1,0 +1,4 @@
+/* Intentional stylelint violation: invalid hex color value */
+a {
+  color: #xyz;
+}

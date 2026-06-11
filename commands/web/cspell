@@ -22,6 +22,14 @@ fi
 # Download prepare-cspell.php from the GitLab Templates repository, exactly
 # as the CI job does.
 PREPARE_SCRIPT=$(mktemp /tmp/prepare-cspell-XXXXXX.php)
+CONFIG_BACKUP=""
+
+cleanup() {
+  rm -f "${PREPARE_SCRIPT}"
+  [ -n "${CONFIG_BACKUP}" ] && rm -f "${CONFIG_BACKUP}"
+}
+trap cleanup EXIT
+
 curl -fsSL -o "${PREPARE_SCRIPT}" \
   https://git.drupalcode.org/project/gitlab_templates/-/raw/default-ref/scripts/prepare-cspell.php
 
@@ -31,7 +39,8 @@ curl -fsSL -o "${PREPARE_SCRIPT}" \
 HAS_CONFIG=0
 if [ -f ".cspell.json" ]; then
   HAS_CONFIG=1
-  cp ".cspell.json" ".cspell.json.bak"
+  CONFIG_BACKUP=$(mktemp /tmp/cspell-config-XXXXXX.json)
+  cp ".cspell.json" "${CONFIG_BACKUP}"
 else
   curl -fsSL -o ".cspell.json" \
     https://git.drupalcode.org/project/gitlab_templates/-/raw/default-ref/assets/.cspell.json
@@ -61,7 +70,6 @@ CI_PROJECT_NAME=$(basename "$(pwd)")
 export CI_PROJECT_DIR
 CI_PROJECT_DIR=$(pwd)
 php "${PREPARE_SCRIPT}"
-rm -f "${PREPARE_SCRIPT}"
 
 # Invoke cspell with the same flags and path as the CI job.
 "${CSPELL}" -c .cspell.json --show-suggestions --show-context --no-progress "${@:-.}"
@@ -69,9 +77,10 @@ EXIT_CODE=$?
 
 # Restore or remove .cspell.json.
 if [ "${HAS_CONFIG}" -eq 1 ]; then
-  mv ".cspell.json.bak" ".cspell.json"
+  cp "${CONFIG_BACKUP}" ".cspell.json"
 else
   rm -f ".cspell.json"
 fi
+rm -f ".cspell.json.bak"
 
 exit ${EXIT_CODE}

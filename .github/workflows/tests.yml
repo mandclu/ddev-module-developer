@@ -41,6 +41,6 @@ jobs:
           ddev_version: ${{ matrix.ddev_version }}
           token: ${{ secrets.GITHUB_TOKEN }}
           debug_enabled: ${{ github.event.inputs.debug_enabled }}
-          # Exclude the release-install test; it requires a published release tag.
-          # It runs automatically on the nightly schedule via the release tag.
-          test_command: bats tests/ --filter-tags '!release'
+          # PR/push test the checked-out directory. Nightly runs also test the
+          # latest published release install path.
+          test_command: ${{ github.event_name == 'schedule' && 'bats tests/' || 'bats tests/ --filter-tags "!release"' }}

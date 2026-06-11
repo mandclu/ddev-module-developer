@@ -19,6 +19,21 @@ remove_fixture() {
   rm -rf "${TESTDIR}/web/modules/custom/${1}"
 }
 
+# Create an executable test binary that prints a sentinel, cwd, and arguments.
+# Usage: make_shim <path> <label>
+make_shim() {
+  local path="${1}" label="${2}"
+  mkdir -p "$(dirname "${path}")"
+  cat > "${path}" <<SHIM
+#!/usr/bin/env bash
+echo "${label}"
+echo "PWD:\$(pwd)"
+echo "ARGS:\$*"
+exit 0
+SHIM
+  chmod +x "${path}"
+}
+
 # Verify every tool binary is on PATH, all bundled configs are present,
 # and all commands are registered with ddev.
 health_checks() {

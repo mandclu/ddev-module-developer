@@ -36,13 +36,18 @@ setup() {
   cd "${TESTDIR}"
   # Start each test with no project-level config overrides.
   rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
-        phpstan.dist.neon .stylelintrc.json .eslintrc.json rector.php
+        phpstan.dist.neon .stylelintrc .stylelintrc.json .stylelintrc.yml \
+        .eslintrc .eslintrc.json .eslintrc.yml rector.php rector.php.dist
+  rm -rf web/core
 }
 
 teardown() {
+  cd "${TESTDIR}"
   rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
-        phpstan.dist.neon .stylelintrc.json .eslintrc.json rector.php custom-rules.xml \
+        phpstan.dist.neon .stylelintrc .stylelintrc.json .stylelintrc.yml \
+        .eslintrc .eslintrc.json .eslintrc.yml rector.php rector.php.dist custom-rules.xml \
         .cspell.json .cspell.json.bak
+  rm -rf web/core
 }
 
 # ---------------------------------------------------------------------------
@@ -66,6 +71,31 @@ XML
   run ddev phpcs web/modules/custom/clean_module
   assert_success
   [ -f phpcs.xml.dist ]
+}
+
+@test "phpcs: project phpcs.xml.dist is used without being replaced" {
+  cat > phpcs.xml.dist <<'XML'
+<?xml version="1.0"?>
+<ruleset name="Local-Dist">
+  <rule ref="PSR12"/>
+</ruleset>
+XML
+
+  ddev phpcs web/modules/custom/clean_module || true
+  run grep -q "Local-Dist" phpcs.xml.dist
+  assert_success
+}
+
+@test "phpcs: project .phpcs.xml is used without downloading phpcs.xml.dist" {
+  cat > .phpcs.xml <<'XML'
+<?xml version="1.0"?>
+<ruleset name="Dot-PHPCS">
+  <rule ref="PSR12"/>
+</ruleset>
+XML
+
+  ddev phpcs web/modules/custom/clean_module || true
+  [ ! -f phpcs.xml.dist ]
 }
 
 # ---------------------------------------------------------------------------
@@ -93,6 +123,16 @@ parameters:
   level: 0
 NEON
   # With a project neon, phpstan should exec without building a temp neon.
+  run ddev phpstan --version
+  assert_success
+}
+
+@test "phpstan: project-level phpstan.dist.neon is recognised" {
+  cat > phpstan.dist.neon <<'NEON'
+parameters:
+  level: 0
+NEON
+
   run ddev phpstan --version
   assert_success
 }
@@ -136,6 +176,25 @@ JSON
   assert_success
 }
 
+@test "stylelint: project .stylelintrc.yml overrides bundled config" {
+  cat > .stylelintrc.yml <<'YAML'
+rules: {}
+YAML
+
+  run ddev stylelint "web/modules/custom/dirty_module/css/bad.css"
+  assert_success
+}
+
+@test "stylelint: Drupal core config is preferred over bundled config" {
+  mkdir -p web/core/node_modules
+  cat > web/core/.stylelintrc.json <<'JSON'
+{"rules": {}}
+JSON
+
+  run ddev stylelint "web/modules/custom/dirty_module/css/bad.css"
+  assert_success
+}
+
 @test "stylelint: without project config, bundled default flags bad.css" {
   run ddev stylelint "web/modules/custom/dirty_module/css/bad.css"
   assert_failure
@@ -154,6 +213,36 @@ JSON
   assert_success
 }
 
+@test "eslint: project .eslintrc.yml overrides bundled config" {
+  cat > .eslintrc.yml <<'YAML'
+rules: {}
+YAML
+
+  run ddev eslint web/modules/custom/dirty_module/js/bad.js
+  assert_success
+}
+
+@test "eslint: Drupal core config is preferred over bundled config" {
+  mkdir -p web/core/node_modules web/modules/custom/.cache
+  cat > web/core/.eslintrc.passing.json <<'JSON'
+{"root": true, "rules": {}}
+JSON
+  cat > web/core/.eslintrc.jquery.json <<'JSON'
+{"rules": {}}
+JSON
+  cat > web/core/.prettierrc.json <<'JSON'
+{}
+JSON
+
+  cd "${TESTDIR}/web/modules/custom/dirty_module"
+  run ddev eslint js/bad.js
+  assert_success
+  [ ! -e "${TESTDIR}/web/modules/custom/.eslintrc.json" ]
+  [ ! -e "${TESTDIR}/web/modules/custom/.eslintrc.jquery.json" ]
+  [ ! -e .prettierrc.json ]
+  [ ! -e .prettierignore ]
+}
+
 @test "eslint: without project config, bundled default flags bad.js" {
   run ddev eslint web/modules/custom/dirty_module/js/bad.js
   assert_failure
@@ -166,6 +255,16 @@ JSON
 @test "rector: project rector.php is used when present" {
   # Write a minimal config that targets an empty path so rector exits cleanly.
   cat > rector.php <<'PHP'
+<?php
+use Rector\Config\RectorConfig;
+return RectorConfig::configure()->withPaths([]);
+PHP
+  run ddev rector process --dry-run
+  assert_success
+}
+
+@test "rector: project rector.php.dist is used when present" {
+  cat > rector.php.dist <<'PHP'
 <?php
 use Rector\Config\RectorConfig;
 return RectorConfig::configure()->withPaths([]);

@@ -8,10 +8,31 @@
 ## HostWorkingDir: true
 ## MutagenSync: true
 
+# Prefer the project-local rector binary (same as CI uses via $COMPOSER_BIN_DIR).
+RECTOR="${DDEV_APPROOT}/vendor/bin/rector"
+if [ ! -x "${RECTOR}" ]; then
+  RECTOR="rector"
+fi
+
 # If the project provides its own rector config, use it as-is.
 for config in rector.php rector.php.dist; do
   if [ -f "${DDEV_APPROOT}/${config}" ]; then
-    exec rector "$@"
+    PROJECT_CONFIG="${DDEV_APPROOT}/${config}"
+    TEMP_PROJECT_CONFIG=""
+    if [ "${config}" = "rector.php.dist" ]; then
+      TEMP_PROJECT_CONFIG=$(mktemp /tmp/rector-project-XXXXXX.php)
+      cp "${PROJECT_CONFIG}" "${TEMP_PROJECT_CONFIG}"
+      PROJECT_CONFIG="${TEMP_PROJECT_CONFIG}"
+    fi
+
+    if [ "$#" -gt 0 ] && [ "$1" = "process" ]; then
+      "${RECTOR}" "$@" --config="${PROJECT_CONFIG}"
+      EXIT_CODE=$?
+      [ -n "${TEMP_PROJECT_CONFIG}" ] && rm -f "${TEMP_PROJECT_CONFIG}"
+      exit ${EXIT_CODE}
+    fi
+    [ -n "${TEMP_PROJECT_CONFIG}" ] && rm -f "${TEMP_PROJECT_CONFIG}"
+    exec "${RECTOR}" "$@"
   fi
 done
 
@@ -48,9 +69,9 @@ if [ $# -eq 0 ]; then
   echo "No subcommand given; defaulting to 'process --dry-run'."
   echo "Run 'ddev rector process' to apply changes."
   echo ""
-  rector --config="${TMPCONFIG}" process --dry-run
+  "${RECTOR}" --config="${TMPCONFIG}" process --dry-run
 else
-  rector --config="${TMPCONFIG}" "$@"
+  "${RECTOR}" --config="${TMPCONFIG}" "$@"
 fi
 EXIT_CODE=$?
 rm -f "${TMPCONFIG}"

@@ -215,7 +215,7 @@ in the suite because it only validates PHP syntax (parse errors) and nothing els
 In the Drupal GitLab CI pipeline it runs inside the `composer-lint` job as the first
 quality gate, providing immediate feedback on broken PHP before heavier tools run.
 
-The command passes `--extensions php,module,install,theme,inc,profile` to match the
+The command passes `-e php,module,install,theme,inc,profile` to match the
 file types Drupal CI checks, and `--exclude vendor --exclude node_modules` to avoid
 scanning third-party code. The `_PARALLEL_LINT_EXTRA` variable from `.gitlab-ci.yml`
 is injected as extra flags, matching the pattern of other commands.

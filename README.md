@@ -48,6 +48,7 @@ Without this step both commands still work using the bundled fallback configurat
 This add-on provides the following DDEV commands, all running inside the web container.
 
 - `ddev checks` — Run all Drupal GitLab CI checks in sequence and print a summary. See [Running all checks](#running-all-checks) below.
+- `ddev checks-fixes` — Auto-fix code style violations by running `phpcbf`, `eslint --fix`, and `stylelint --fix` in sequence. See [Automatically fix coding standard violations](#automatically-fix-coding-standard-violations) below.
 - `ddev parallel-lint` — Run [php-parallel-lint](https://github.com/php-parallel-lint/php-parallel-lint) to check PHP files for syntax errors.
 - `ddev phpcs` — Run [PHP_CodeSniffer](https://github.com/PHPCSStandards/PHP_CodeSniffer) against Drupal coding standards.
 - `ddev phpcbf` — Auto-fix phpcs violations using PHP Code Beautifier and Fixer.
@@ -272,9 +273,17 @@ Most tools support an ignore file in the project root:
 
 ## Automatically fix coding standard violations
 
-`ddev stylelint --fix` and `ddev eslint --fix` will auto-fix Prettier formatting issues in CSS and JavaScript files respectively:
+`ddev checks-fixes` runs all three auto-fixers in sequence and prints a summary — the quickest way to clean up a module before running `ddev checks`:
 
 ```sh
+ddev checks-fixes
+ddev checks-fixes web/modules/custom/mymodule
+```
+
+The individual fixers can also be run directly:
+
+```sh
+ddev phpcbf web/modules/custom/mymodule
 ddev stylelint --fix
 ddev stylelint --fix 'web/modules/custom/mymodule/**/*.css'
 ddev eslint --fix

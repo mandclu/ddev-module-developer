@@ -33,6 +33,7 @@ command running inside the web container.
 | Command        | Tool                                     | Language  |
 | -------------- | ---------------------------------------- | --------- |
 | `checks`       | Orchestrator — runs all CI checks        | all       |
+| `checks-fixes` | Orchestrator — runs all auto-fixers      | all       |
 | `parallel-lint`| php-parallel-lint (PHP syntax)           | PHP       |
 | `phpcs`        | PHP_CodeSniffer                          | PHP       |
 | `phpcbf`       | PHP Code Beautifier and Fixer            | PHP       |

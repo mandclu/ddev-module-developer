@@ -284,3 +284,29 @@ YAML
   assert_output --partial "PHPUnit"
   assert_output --partial "skipped"
 }
+
+# ---------------------------------------------------------------------------
+# checks-fixes
+# ---------------------------------------------------------------------------
+
+@test "checks-fixes: exits 0 on clean_module with all three fixers passing" {
+  run ddev checks-fixes web/modules/custom/clean_module
+  assert_success
+  assert_output --partial "PHP Code Beautifier and Fixer"
+  assert_output --partial "ESLint"
+  assert_output --partial "Stylelint"
+  assert_output --partial "Result: passed"
+}
+
+@test "checks-fixes: exits 1 on dirty_module when unfixable violations remain" {
+  # Use a throwaway copy so phpcbf/eslint --fix/stylelint --fix don't corrupt
+  # dirty_module for the other tests that rely on it staying dirty.
+  copy_fixture dirty_module dirty_module_fixes
+  run ddev checks-fixes web/modules/custom/dirty_module_fixes
+  assert_failure
+  assert_output --partial "PHP Code Beautifier and Fixer"
+  assert_output --partial "ESLint"
+  assert_output --partial "Stylelint"
+  assert_output --partial "Result: FAILED"
+  remove_fixture dirty_module_fixes
+}

@@ -72,6 +72,14 @@ teardown() {
   assert_success
 }
 
+@test "checks-fixes: no path from clean module targets the current module and exits 0" {
+  cd "${TESTDIR}/web/modules/custom/clean_module"
+
+  run ddev checks-fixes
+  assert_success
+  assert_output --partial "Result: passed"
+}
+
 @test "phpunit: no path passes dot from the host working directory" {
   make_shim "${TESTDIR}/vendor/bin/phpunit" LOCAL_PHPUNIT
   cat > "${TESTDIR}/phpunit.xml" <<'XML'

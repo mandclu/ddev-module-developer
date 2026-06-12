@@ -68,7 +68,7 @@ health_checks() {
   # All commands must appear in ddev help.
   run ddev help
   assert_success
-  for cmd in checks parallel-lint phpcs phpcbf phpstan phpmd rector stylelint eslint cspell phpunit phpcompat; do
+  for cmd in checks checks-fixes parallel-lint phpcs phpcbf phpstan phpmd rector stylelint eslint cspell phpunit phpcompat; do
     assert_output --partial "${cmd}"
   done
 

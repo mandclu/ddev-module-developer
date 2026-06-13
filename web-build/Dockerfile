@@ -19,7 +19,7 @@ RUN composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-in
       phpstan/phpstan \
       mglaman/phpstan-drupal \
       phpmd/phpmd \
-      palantirnet/drupal-rector \
+      palantirnet/drupal-rector:^1.0@beta \
       php-parallel-lint/php-parallel-lint \
     && ln -sf /usr/local/composer/vendor/bin/phpcs          /usr/local/bin/phpcs \
     && ln -sf /usr/local/composer/vendor/bin/phpcbf         /usr/local/bin/phpcbf \

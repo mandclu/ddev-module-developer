@@ -69,5 +69,25 @@ if [ "${#PATTERNS[@]}" -eq 0 ]; then
   PATTERNS=('./**/*.css')
 fi
 
+# Only pass --ignore-path when the file exists. stylelint v16+ treats a missing
+# --ignore-path target as a fatal error (exit 2) rather than silently ignoring it.
+IGNORE_PATH_ARGS=()
+if [ -f "./.stylelintignore" ]; then
+  IGNORE_PATH_ARGS=("--ignore-path" "./.stylelintignore")
+fi
+
 # shellcheck disable=SC2086
-exec "${STYLELINT}" --allow-empty-input --ignore-path ./.stylelintignore ${STYLELINT_CONFIG} "${FLAGS[@]}" "${PATTERNS[@]}" --formatter verbose --color ${_STYLELINT_EXTRA}
+"${STYLELINT}" --allow-empty-input "${IGNORE_PATH_ARGS[@]}" ${STYLELINT_CONFIG} "${FLAGS[@]}" "${PATTERNS[@]}" --formatter verbose --color ${_STYLELINT_EXTRA}
+EXIT_CODE=$?
+
+# With --fix, stylelint v17 exits 2 when lint errors remain after fixing — the
+# same code it uses in check mode. For a fixer, "success" means the tool ran
+# without crashing, not that it eliminated every error. Remap 2 → 0 so that
+# "ddev stylelint --fix" and "ddev checks-fixes" both exit cleanly even when
+# some errors are only fixable by hand.
+for flag in "${FLAGS[@]}"; do
+  if [ "$flag" = "--fix" ] && [ "$EXIT_CODE" -eq 2 ]; then
+    exit 0
+  fi
+done
+exit "$EXIT_CODE"

@@ -52,6 +52,35 @@ if [ "${FOUND_LOCAL_CONFIG}" = "false" ]; then
   fi
 fi
 
+# Prettier config: match CI behaviour — if no local Prettier config exists and
+# core's .prettierrc.json is available, symlink it so stylelint-prettier uses the
+# same formatting rules as the pipeline. The symlink is removed on exit.
+FOUND_LOCAL_PRETTIER=false
+for cfg in .prettierrc .prettierrc.json .prettierrc.yml .prettierrc.yaml \
+           .prettierrc.js .prettierrc.cjs .prettierrc.mjs \
+           prettier.config.js prettier.config.cjs prettier.config.mjs; do
+  if [ -f "./${cfg}" ]; then
+    FOUND_LOCAL_PRETTIER=true
+    break
+  fi
+done
+
+PRETTIER_SYMLINK_CREATED=false
+if [ "${FOUND_LOCAL_PRETTIER}" = "false" ]; then
+  CORE_PRETTIERRC="${DDEV_APPROOT}/${WEB_ROOT}/core/.prettierrc.json"
+  if [ -f "${CORE_PRETTIERRC}" ]; then
+    ln -s "${CORE_PRETTIERRC}" ./.prettierrc.json
+    PRETTIER_SYMLINK_CREATED=true
+  fi
+fi
+
+cleanup() {
+  if [ "${PRETTIER_SYMLINK_CREATED}" = "true" ]; then
+    rm -f ./.prettierrc.json
+  fi
+}
+trap cleanup EXIT
+
 # Separate flags (--*) from file patterns so that flag-only invocations like
 # "ddev stylelint --fix" still get the default glob. Quoted so stylelint's own
 # glob library handles ** recursively (bash without globstar would only expand

@@ -57,6 +57,7 @@ RUN npm install -g \
       stylelint \
       stylelint-config-standard \
       stylelint-prettier \
+      stylelint-order \
       eslint@^8.57.0 \
       eslint-config-prettier \
       eslint-plugin-prettier \

@@ -49,6 +49,11 @@ if [ "${FOUND_LOCAL_CONFIG}" = "false" ]; then
   if [ -f "${CORE_STYLELINTRC}" ] && [ -d "${CORE_NODE_MODULES}" ]; then
     STYLELINT_CONFIG="--config ${CORE_STYLELINTRC}"
   else
+    if [ -f "${CORE_STYLELINTRC}" ] && [ ! -d "${CORE_NODE_MODULES}" ]; then
+      echo "Note: web/core/node_modules is not installed; using bundled stylelint config." >&2
+      echo "      CI uses the prettier version pinned in web/core/yarn.lock, which may" >&2
+      echo "      format CSS differently. Run 'yarn install' in web/core for parity." >&2
+    fi
     # Bundled fallback: stylelint resolves plugins from the config file's
     # directory, so a plain --config path won't find globally installed packages.
     # Stage the config in a temp dir with a node_modules symlink pointing at the

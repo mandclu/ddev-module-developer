@@ -270,6 +270,28 @@ Most tools support an ignore file in the project root:
 - eslint: `.eslintignore`
 - cspell: `ignorePaths` in `.cspell.json`
 
+### Accepting cspell words into the project dictionary
+
+`cspell` has no native autofix — there's nothing in your source files to
+rewrite for a spelling issue. `ddev cspell --accept-words` does **not** fix
+anything; it collects every word CSpell doesn't currently recognize and
+appends any not already present to the project dictionary
+(`.cspell-project-words.txt` by default, or whatever `_CSPELL_DICTIONARY` is
+set to in `.gitlab-ci.yml`), in the directory you ran the command from. The
+file is deduplicated and sorted alphabetically after each run, and is created
+if it doesn't already exist.
+
+```sh
+ddev cspell --accept-words
+ddev cspell --accept-words web/modules/custom/mymodule
+```
+
+Because it accepts every flagged word indiscriminately — including genuine
+typos — always review the resulting diff to `.cspell-project-words.txt`
+before committing. It is intended for triaging a large initial backlog of
+false positives, not as a substitute for fixing real misspellings. For this
+reason it is **not** included in `ddev checks-fixes`.
+
 
 ## Automatically fix coding standard violations
 

@@ -257,6 +257,30 @@ under `/usr/local/phpcompat/` and always invokes that binary directly — never 
 project-local or global phpcs 4.x binary.
 
 
+## cspell specifics
+
+`cspell` has no native autofix — there is nothing in a source file to rewrite for
+a spelling issue. `ddev cspell --accept-words` does not fix any misspellings; it
+only suppresses future failures by accepting every currently-flagged word into
+the project dictionary. The name is deliberately not `--fix`, to avoid implying
+it fixes anything — accepting a genuine typo into the dictionary just hides the
+technical debt instead of resolving it.
+
+The command strips `--accept-words` out of `"$@"` before the flag reaches the
+`cspell` binary, re-runs `cspell` with `--words-only --unique` to collect just
+the unrecognised words, and merges them into the project dictionary
+(`_CSPELL_DICTIONARY`, default `.cspell-project-words.txt`) in the current
+directory — deduplicated and sorted with `sort -u`, creating the file if it
+doesn't exist. It always exits 0 unless the harvesting run produced no words
+*and* exited non-zero, which signals a real tool failure (e.g. a config error)
+rather than "nothing to accept".
+
+Because it can silently paper over real spelling mistakes, `--accept-words` is
+**not** wired into `checks-fixes` — unlike `phpcbf`, `eslint --fix`, and
+`stylelint --fix`, it doesn't fix anything, so it doesn't belong alongside tools
+that do.
+
+
 ## Bundled default configs
 
 | File | Tool | Notes |

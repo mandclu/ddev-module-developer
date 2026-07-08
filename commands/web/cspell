@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #ddev-generated
 
-## Description: Run CSpell spell-checking (Drupal standards)
+## Description: Run CSpell spell-checking (Drupal standards). Pass --accept-words to add found words to the project dictionary.
 ## Usage: cspell [flags] [pattern]
-## Example: "ddev cspell"
+## Example: "ddev cspell" or "ddev cspell --accept-words"
 ## ExecRaw: true
 ## HostWorkingDir: true
 
@@ -22,14 +22,32 @@ fi
 # shellcheck source=../../module-developer/lib/init.sh
 source /mnt/ddev_config/module-developer/lib/init.sh
 
+# --accept-words is handled by this script, not by the cspell binary. It does
+# not fix any spelling — it only suppresses future failures by adding every
+# currently-unrecognised word to the project dictionary. Strip it out of "$@"
+# before it reaches cspell itself.
+ACCEPT_WORDS_MODE=0
+ARGS=()
+for arg in "$@"; do
+  if [ "${arg}" = "--accept-words" ]; then
+    ACCEPT_WORDS_MODE=1
+  else
+    ARGS+=("${arg}")
+  fi
+done
+set -- "${ARGS[@]}"
+unset ARGS arg
+
 # Download prepare-cspell.php from the GitLab Templates repository, exactly
 # as the CI job does.
 PREPARE_SCRIPT=$(mktemp /tmp/prepare-cspell-XXXXXX.php)
 CONFIG_BACKUP=""
+DICT_TMP=""
 
 cleanup() {
   rm -f "${PREPARE_SCRIPT}"
   [ -n "${CONFIG_BACKUP}" ] && rm -f "${CONFIG_BACKUP}"
+  [ -n "${DICT_TMP}" ] && rm -f "${DICT_TMP}"
 }
 trap cleanup EXIT
 
@@ -74,9 +92,46 @@ export CI_PROJECT_DIR
 CI_PROJECT_DIR=$(pwd)
 php "${PREPARE_SCRIPT}"
 
-# Invoke cspell with the same flags and path as the CI job.
-"${CSPELL}" -c .cspell.json --show-suggestions --show-context --no-progress "${@:-.}"
-EXIT_CODE=$?
+if [ "${ACCEPT_WORDS_MODE}" -eq 1 ]; then
+  # Harvest unrecognised words instead of reporting them as failures, and
+  # merge them into the project dictionary (deduped and sorted). This does
+  # not fix any misspellings — it only accepts words into the dictionary so
+  # they stop being reported.
+  WORDS_OUTPUT=$("${CSPELL}" -c .cspell.json --words-only --unique --no-progress "${@:-.}")
+  WORDS_EXIT_CODE=$?
+
+  if [ -z "${WORDS_OUTPUT}" ] && [ "${WORDS_EXIT_CODE}" -ne 0 ]; then
+    # No words were harvested and cspell reported a failure: something other
+    # than "found unknown words" went wrong (e.g. a config error). Surface it
+    # rather than silently reporting "no new words".
+    EXIT_CODE=${WORDS_EXIT_CODE}
+  else
+    DICT_FILE="${_CSPELL_DICTIONARY}"
+    BEFORE_COUNT=0
+    [ -f "${DICT_FILE}" ] && BEFORE_COUNT=$(grep -c '' "${DICT_FILE}")
+
+    DICT_TMP=$(mktemp /tmp/cspell-dict-XXXXXX.txt)
+    {
+      [ -f "${DICT_FILE}" ] && cat "${DICT_FILE}"
+      [ -n "${WORDS_OUTPUT}" ] && printf '%s\n' "${WORDS_OUTPUT}"
+    } | sort -u | awk 'NF' > "${DICT_TMP}"
+    mv "${DICT_TMP}" "${DICT_FILE}"
+    DICT_TMP=""
+
+    AFTER_COUNT=$(grep -c '' "${DICT_FILE}")
+    NEW_WORDS=$((AFTER_COUNT - BEFORE_COUNT))
+    if [ "${NEW_WORDS}" -gt 0 ]; then
+      printf "cspell --accept-words: added %d new word(s) to %s\n" "${NEW_WORDS}" "${DICT_FILE}"
+    else
+      printf "cspell --accept-words: no new words found; %s unchanged\n" "${DICT_FILE}"
+    fi
+    EXIT_CODE=0
+  fi
+else
+  # Invoke cspell with the same flags and path as the CI job.
+  "${CSPELL}" -c .cspell.json --show-suggestions --show-context --no-progress "${@:-.}"
+  EXIT_CODE=$?
+fi
 
 # Restore or remove .cspell.json.
 if [ "${HAS_CONFIG}" -eq 1 ]; then

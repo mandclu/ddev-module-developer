@@ -47,7 +47,7 @@ setup() {
 teardown() {
   rm -f phpcs.xml phpcs.xml.dist .phpcs.xml phpstan.neon phpstan.neon.dist \
         .stylelintrc.json .eslintrc.json rector.php .cspell.json .cspell.json.bak \
-        .gitlab-ci.yml
+        .cspell-project-words.txt .gitlab-ci.yml
 }
 
 # ---------------------------------------------------------------------------
@@ -143,6 +143,26 @@ teardown() {
 
 @test "cspell: clean PHP file passes and exits 0" {
   run ddev cspell web/modules/custom/clean_module/clean_module.module
+  assert_success
+}
+
+@test "cspell --accept-words: harvests unknown words into .cspell-project-words.txt" {
+  run ddev cspell --accept-words web/modules/custom/dirty_module/README.md
+  assert_success
+  [ -f .cspell-project-words.txt ]
+  grep -qx "speling" .cspell-project-words.txt
+}
+
+@test "cspell --accept-words: running twice does not duplicate a harvested word" {
+  ddev cspell --accept-words web/modules/custom/dirty_module/README.md
+  run ddev cspell --accept-words web/modules/custom/dirty_module/README.md
+  assert_success
+  [ "$(grep -cx "speling" .cspell-project-words.txt)" -eq 1 ]
+}
+
+@test "cspell --accept-words: a subsequent normal run passes once words are harvested" {
+  ddev cspell --accept-words web/modules/custom/dirty_module/README.md
+  run ddev cspell web/modules/custom/dirty_module/README.md
   assert_success
 }
 

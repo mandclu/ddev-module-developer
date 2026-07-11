@@ -1,9 +1,11 @@
 {
-  "#ddev-generated": true,
   "env": {
     "browser": true,
     "es2020": true,
     "jquery": true
+  },
+  "settings": {
+    "#ddev-generated": true
   },
   "parserOptions": {
     "ecmaVersion": 2020,

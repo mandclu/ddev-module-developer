@@ -342,6 +342,24 @@ type: drupal
 
 The bundled fallback configs use globally installed plugins. If you are pointing ESLint or Stylelint at a custom config that references plugins not installed globally, either install those plugins inside the container or add them to your project's `package.json` and run `yarn install` / `npm install`.
 
+**Updating the add-on doesn't seem to take effect**
+
+`ddev add-on get` will not overwrite a project file that lacks the `#ddev-generated` marker, since that's how it tells apart its own generated files from ones you've customized. If a file was ever installed by a version of this add-on before that marker was added to it (this happened historically for `web-build/Dockerfile`, `.eslintrc.json`, and `.prettierrc.json`), later updates to that file will silently be skipped forever, even though every other file updates normally. `ddev add-on get` reports this case explicitly:
+
+```
+NOT overwriting .ddev/web-build/Dockerfile. The #ddev-generated signature was not found in the file, so it will not be overwritten.
+```
+
+If you see this message, remove the affected file and reinstall so it gets rebuilt with the marker in place, then rebuild the container:
+
+```sh
+rm .ddev/web-build/Dockerfile
+ddev add-on get mandclu/ddev-module-developer
+ddev restart
+```
+
+Once reinstalled, the file carries the marker and future updates apply automatically.
+
 **PHPStan cannot find Drupal classes**
 
 Make sure `drupal_root` is set correctly. When using the bundled config the `phpstan` command sets this automatically from `$DDEV_DOCROOT`. If you supply your own `phpstan.neon`, add:

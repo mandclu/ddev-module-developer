@@ -37,7 +37,7 @@ ddev restart
 4. Optional — for `eslint` and `stylelint` to use Drupal core's own configuration files (the same ones used in CI), install core's JavaScript dependencies:
 
 ```sh
-ddev exec "cd web/core && yarn install"
+ddev core-js-install
 ```
 
 Without this step both commands still work using the bundled fallback configurations.
@@ -59,6 +59,7 @@ This add-on provides the following DDEV commands, all running inside the web con
 - `ddev stylelint` — Run [Stylelint](https://stylelint.io) on CSS/SCSS files.
 - `ddev eslint` — Run [ESLint](https://eslint.org) on JavaScript and YAML files, with Prettier formatting checks.
 - `ddev cspell` — Run [CSpell](https://cspell.org) spell-checking across project files.
+- `ddev core-js-install` — Run `yarn install` in `web/core` so `eslint` and `stylelint` use Drupal core's own configuration files instead of the bundled fallback. See step 4 of [Install](#install) above.
 
 Pass a path as the first argument to any command to target a specific file or directory:
 

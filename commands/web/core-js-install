@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#ddev-generated
+
+## Description: Run 'yarn install' in web/core so eslint and stylelint match CI exactly
+## Usage: core-js-install [yarn-flags]
+## Example: "ddev core-js-install"
+## ExecRaw: true
+## HostWorkingDir: true
+
+WEB_ROOT="${DDEV_DOCROOT:-web}"
+CORE_DIR="${DDEV_APPROOT}/${WEB_ROOT}/core"
+
+# shellcheck source=../../module-developer/lib/init.sh
+source /mnt/ddev_config/module-developer/lib/init.sh
+
+if [ ! -f "${CORE_DIR}/package.json" ]; then
+  echo "${CORE_DIR}/package.json not found."
+  echo "Make sure Drupal is installed and ${WEB_ROOT}/core exists."
+  exit 1
+fi
+
+if ! command -v yarn >/dev/null 2>&1; then
+  echo "yarn is not installed in the web container. Run 'ddev restart' to build the updated web container."
+  exit 1
+fi
+
+cd "${CORE_DIR}" && exec yarn install "$@"

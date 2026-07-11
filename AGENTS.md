@@ -44,6 +44,7 @@ command running inside the web container.
 | `stylelint`    | Stylelint                                | CSS/SCSS  |
 | `eslint`       | ESLint + Prettier + yml plugin           | JS/YAML   |
 | `cspell`       | CSpell                                   | all       |
+| `core-js-install` | Runs `yarn install` in `web/core` for eslint/stylelint CI parity | JS |
 
 All PHP tools are installed globally via Composer into `/usr/local/composer/` and
 symlinked into `/usr/local/bin/`. Node.js tools are installed globally via npm.
@@ -279,6 +280,18 @@ Because it can silently paper over real spelling mistakes, `--accept-words` is
 **not** wired into `checks-fixes` — unlike `phpcbf`, `eslint --fix`, and
 `stylelint --fix`, it doesn't fix anything, so it doesn't belong alongside tools
 that do.
+
+
+## `core-js-install` specifics
+
+`ddev core-js-install` is a thin wrapper around `cd web/core && yarn install`.
+It exists so that `stylelint`'s "web/core/node_modules is not installed" note
+(and the equivalent install step) can point at a single `ddev` command instead
+of a raw shell one-liner. It is deliberately **not** run automatically by any
+other command — per the no-per-start-installation invariant below, commands
+must not perform installation as a side effect of a check. It requires
+network access and can take tens of seconds on a cold cache, which is not
+something a lint/check command should impose silently.
 
 
 ## Bundled default configs

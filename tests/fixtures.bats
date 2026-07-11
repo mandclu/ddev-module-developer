@@ -330,3 +330,15 @@ YAML
   assert_output --partial "Result: FAILED"
   remove_fixture dirty_module_fixes
 }
+
+# ---------------------------------------------------------------------------
+# core-js-install
+# ---------------------------------------------------------------------------
+
+@test "core-js-install: exits with a clear message when web/core is not installed" {
+  # The test project is not a full Drupal core checkout, so web/core/package.json
+  # never exists — this covers the missing-prerequisite path.
+  run ddev core-js-install
+  assert_failure
+  assert_output --partial "package.json not found"
+}
